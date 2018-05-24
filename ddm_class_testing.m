@@ -31,6 +31,5 @@ sr = sr.ddm_search;
 sr.ddm_save;
 
 px = sr.fit(end).p;px.c = 1;
-
 %make 100 draws from the pdf
 sr.ddm_draw(px,100);

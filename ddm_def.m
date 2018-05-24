@@ -154,7 +154,7 @@ classdef ddm_def
         
         function [t_ups,t_dow,p_ups,p_dow] = ddm_draw(obj,p,N)
             
-            if not(isifield(p,'c'))
+            if not(isfield(p,'c'))
                 error('Currently code needs condition to be passed here');
             end
             
