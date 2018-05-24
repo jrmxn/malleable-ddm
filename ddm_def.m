@@ -20,8 +20,7 @@ classdef ddm_def
     methods
         function obj = ddm_def(modelclass)
             obj.modelclass = modelclass;
-            
-            obj.modelKey = getmodelKey(obj, 1);
+            obj.modelKey = get_modeldef(obj, 'keyf');
         end
         
         function opt = opt_init(obj)
@@ -50,9 +49,9 @@ classdef ddm_def
             
             
             error('need to resume here');
-%             x = ddm_p2x(obj);
-%             x_lb = 
-%             x_ub = 
+            %             x = ddm_p2x(obj);
+            %             x_lb =
+            %             x_ub =
             
             if strcmpi(computeAlgo,'PS')
                 [x,Fps] = patternsearch(@(x)...
@@ -62,7 +61,7 @@ classdef ddm_def
                 error('Invalid compute algo')
             end
             
-%             obj.p = ddm_x2p(x);
+            %             obj.p = ddm_x2p(x);
         end
         
         
@@ -85,18 +84,13 @@ classdef ddm_def
             
             clear v id_model id_fit modelclass subject;
             
-            if strcmpi(obj.s.inittype,'random')
-                p_pre_init = obj.getprand;
-            elseif strcmpi(obj.s.inittype,'default')
-                p_pre_init = obj.getpdefaults;
-            elseif strcmpi(obj.s.inittype,'load')
-                error('not implemented');
-            end
+            p_pre_init = obj.get_modeldef(['init_' obj.s.inittype]);
+            
             obj.s.fit_n = sum(debi_model(obj.id_fit,'de','bi'));
             
             
             id_model_index = find(debi_model(obj.id_model,'de','bi'));
-            id_fit_index = find(debi_model(obj.id_fit,'de','bi'));
+            fvc  = find(debi_model(obj.id_fit,'de','bi'));
             
             % Set the parameters over which to optimise from modelType spec
             c = 1;
@@ -128,64 +122,72 @@ classdef ddm_def
             
         end
         
-%         function obj = set_subject(obj, subject)
-%             obj.sub = subject;
-%         end
+        %         function obj = set_subject(obj, subject)
+        %             obj.sub = subject;
+        %         end
         
-        function outputArg = getpdefaults(obj)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-            pdef_.s = 1;
-            pdef_.a = 1.0;
-            pdef_.t = 0.25;
-            pdef_.v = 1.0;
-            pdef_.xb = 0.0;
-            pdef_.b = 0.0;
-            pdef_.st = 0.0;
-            pdef_.sx = 0.0;
-            
-            
-            %             obj.pdef = pdef_;
-            outputArg = pdef_;
-        end
         
-        function  outputArg = getprand(obj)
+        
+        function outputArg = get_modeldef(obj, deftype)
+            ix = 1;
+            
+            modelkey_var{ix} = 's';ix = ix+1;
+            pran_.s = 1;
             pdef_.s = 1;
             
+            modelkey_var{ix} = 'a';ix = ix+1;
             g_mea = 0.6;g_std = 0.15;
             [A_shape,B_scale] = gamma_convert(g_mea,g_std);
-            pdef_.a = gamrnd(A_shape,B_scale,[1,1]);
+            pran_.a = gamrnd(A_shape,B_scale,[1,1]);
+            pdef_.a = 1.0;
             
+            modelkey_var{ix} = 't';ix = ix+1;
             g_mea = 0.3;g_std = 0.075;
             [A_shape,B_scale] = gamma_convert(g_mea,g_std);
-            pdef_.t = gamrnd(A_shape,B_scale,[1,1]);
+            pran_.t = gamrnd(A_shape,B_scale,[1,1]);
+            pdef_.t = 0.25;
             
-            % g_sd = 1e-3;
-            %             pdef_.lapser = 1e-4;%abs(normrnd(0,g_sd));
-            
+            modelkey_var{ix} = 'v';ix = ix+1;
             g_mea = 3;g_std = 1;
             [A_shape,B_scale] = gamma_convert(g_mea,g_std);
-            pdef_.v = gamrnd(A_shape,B_scale,[1,1]);
+            pran_.v = gamrnd(A_shape,B_scale,[1,1]);
+            pdef_.v = 1.0;
             
+            modelkey_var{ix} = 'b';ix = ix+1;
             g_sd = 2.5;
-            pdef_.b = abs(normrnd(0,g_sd));
+            pran_.b = abs(normrnd(0,g_sd));
+            pdef_.b = 0.0;
             
-            
+            modelkey_var{ix} = 'xb';ix = ix+1;
             g_mea = 0.1;g_std = 0.06;
             [A_shape,B_scale] = gamma_convert(g_mea,g_std);
-            pdef_.xb = gamrnd(A_shape,B_scale,[1,1]);
+            pran_.xb = gamrnd(A_shape,B_scale,[1,1]);
+            pdef_.xb = 0.0;
             
-            
+            modelkey_var{ix} = 'st';ix = ix+1;
             g_lo = 0;
             g_up = 0.15;
-            pdef_.st = unifrnd(g_lo,g_up);
+            pran_.st = unifrnd(g_lo,g_up);
+            pdef_.st = 0.0;
             
-            %not implemented
-            pdef_.sx = 0;
+            modelkey_var{ix} = 'sx';ix = ix+1;
+            pran_.sx = 0;            %not implemented
+            pdef_.sx = 0.0;
             
-            outputArg = pdef_;
+            for ix_modelkey_var = 1:length(modelkey_var)
+                modelkey_rev.(modelkey_var{ix_modelkey_var}) = ix_modelkey_var;
+            end
+            
+            if strcmpi(deftype,'keyf')
+                outputArg = modelkey_var;
+            elseif strcmpi(deftype,'keyr')
+                outputArg = modelkey_rev;
+            elseif strcmpi(deftype,'init_random')
+                outputArg = pran_;
+            elseif strcmpi(deftype,'init_default')
+                outputArg = pdef_;
+            end
         end
-        
         
         function outputArg = getmodelKey(obj, forwards)
             ix = 1;

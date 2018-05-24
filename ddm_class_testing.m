@@ -1,5 +1,5 @@
 sr = ddm_def('');
-mk = sr.getmodelKey(0);
+mk = sr.get_modeldef(obj, 'keyr');
 %%
 id_model = debi_model(0,'de','bi');
 id_model(mk.s) = 1;
