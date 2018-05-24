@@ -298,7 +298,7 @@ classdef ddm_def
             prior_.v = @(x) gampdf(x,A_shape,B_scale);
             
             modelkey_var{ix} = 'b';ix = ix+1;
-            g_sd = 2.5;
+            g_sd = 5;
             pd_hn = makedist('HalfNormal','mu',0,'sigma',g_sd);
             pran_.b = pd_hn.random;
             pdef_.b = 0.0;
