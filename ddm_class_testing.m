@@ -33,3 +33,6 @@ sr.ddm_save;
 px = sr.fit(end).p;px.c = 1;
 %make 100 draws from the pdf
 sr.ddm_data_draw(px,100);
+%%
+clear;
+sr = load('sub01_x3932160x_x1835008x.mat');sr = sr.obj;

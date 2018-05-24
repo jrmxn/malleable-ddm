@@ -22,7 +22,7 @@ classdef ddm_def
         function obj = ddm_def(modelclass)
             %light initialisation so functions can be used easily
             obj.modelclass = modelclass;
-            obj.modelKey = get_modeldef(obj, 'keyf');
+            obj.modelKey = ddm_def_instance(obj, 'keyf');
             obj.info.version = sprintf('%0.3f',0);
         end
         
@@ -62,7 +62,7 @@ classdef ddm_def
             
         end
         
-        function obj = ddm_search_init(obj)
+        function obj = ddm_fit_init(obj)
             
             if isempty(obj.data)
                 obj = get_data(obj);
@@ -75,7 +75,7 @@ classdef ddm_def
             
             if obj.fit_ix==1
                 %p is defined from a full set of defaults/random init
-                init_p_full = obj.get_modeldef(['init_' obj.s.inittype]);
+                init_p_full = obj.ddm_def_instance(['init_' obj.s.inittype]);
                 % and now we need to reduce it to match the specific model
                 % configuration we are testing.
                 id_model_index = find(obj.debi_model(obj.id_model,'de','bi'));
@@ -93,19 +93,19 @@ classdef ddm_def
                 fit_init.p = obj.fit(obj.fit_ix-1).p;
             end
             fit_init.nll = obj.opt.h_cost([],fit_init.p,obj.data,obj.s);
-            fit_init.p_lb = obj.get_modeldef('lbound');
-            fit_init.p_ub = obj.get_modeldef('ubound');
+            fit_init.p_lb = obj.ddm_def_instance('lbound');
+            fit_init.p_ub = obj.ddm_def_instance('ubound');
             
             obj.fit(obj.fit_ix).init = fit_init;
         end
         
-        function obj = ddm_search(obj)
+        function obj = ddm_fit(obj)
             
             if obj.fit_ix==0
-                obj = ddm_search_init(obj);
+                obj = ddm_fit_init(obj);
             end
             if not(isfield(obj.fit(obj.fit_ix),'init'))
-                obj = ddm_search_init(obj);
+                obj = ddm_fit_init(obj);
             end
             fit_init = obj.fit(obj.fit_ix).init;
             
@@ -137,7 +137,21 @@ classdef ddm_def
             obj.fit(obj.fit_ix).bic = bic_app;
         end
         
-        function obj = ddm_mcmc(obj)
+        function obj = ddm_mcmc(obj,varargin)
+            d.mccount = 1e3;
+            d.ThinChain = 5;
+            d.doParallel = true;
+            d.n_s = 25;
+            d.BurnIn = 0.25;
+            v = inputParser;
+            addOptional(v,'mccount',d.mccount);
+            addOptional(v,'ThinChain',d.ThinChain)
+            addOptional(v,'doParallel',d.doParallel)
+            addOptional(v,'n_s',d.n_s)
+            addOptional(v,'BurnIn',d.BurnIn)
+            parse(v,varargin{:})
+            opt_ = v.Results;
+            d = [];clear d;
             
             function ll = prior_likelihood(x,xl,h_priors)
                 vec_xl = fieldnames(xl);
@@ -158,7 +172,7 @@ classdef ddm_def
                 n_init_rand = 5e3;
                 x_rand = nan(n_init_rand,obj.s.fit_n);
                 for ix_draw_prior = 1:n_init_rand
-                    x_rand(ix_draw_prior,:) = p2x(xl,get_modeldef(obj, 'init_random'));
+                    x_rand(ix_draw_prior,:) = p2x(xl,ddm_def_instance(obj, 'init_random'));
                 end
                 %get distance from ps optimum
                 xd = x_rand-x;
@@ -171,16 +185,10 @@ classdef ddm_def
                 minit = x_rand(ix_x_rand,:)';
             end
             
-            
-            opt_.mccount = 5e5;%5e5
-            opt_.ThinChain = 1;
-            opt_.doParallel = true;
-            opt_.n_s = 50;
-            opt_.BurnIn = 0.25;
-            
-            p = obj.fit(end).p;
+            %use most uptodata p value
+            p = obj.fit(obj.fit_ix).p;
             xl = obj.s.xl;
-            h_priors = get_modeldef(obj, 'prior');
+            h_priors = ddm_def_instance(obj, 'prior');
             x = p2x(xl,p);
             
             minit = ddm_mcmc_minit(obj,x,xl,opt_.n_s);
@@ -191,13 +199,10 @@ classdef ddm_def
             logPfuns = {@(m)logprior(m) @(m)loglike(m)};
             
             [models,logp]=gwmcmc(minit,logPfuns,opt_.mccount,'Parallel',opt_.doParallel,'BurnIn',opt_.BurnIn,'ThinChain',opt_.ThinChain);
-            obj.mcmc.models = models;
-            obj.mcmc.logp = logp;
-            obj.mcmc.opt = opt_;
+            obj.mcmc(obj.fit_ix).models = models;
+            obj.mcmc(obj.fit_ix).logp = logp;
+            obj.mcmc(obj.fit_ix).opt = opt_;
             %should add a way to resume these I guess.
-        end
-        
-        function ddm_mcmc_prior(h_priors)
         end
         
         function obj = get_data(obj)
@@ -208,8 +213,8 @@ classdef ddm_def
                     %be specified as 'sub01', 'sub02', etc.
                     data_.subject = arrayfun(@(x) sprintf('sub%02d',x),data_.subject,'UniformOutput',false);
                 end
-                    case_subject = strcmpi(data_.subject,obj.subject);
-
+                case_subject = strcmpi(data_.subject,obj.subject);
+                
                 if iscell(data_.choice)
                     error('Maybe you have a string in choice field?');
                 end
@@ -253,7 +258,7 @@ classdef ddm_def
         end
         
         
-        function outputArg = get_modeldef(obj, deftype)
+        function outputArg = ddm_def_instance(obj, deftype)
             ix = 1;
             
             modelkey_var{ix} = 's';ix = ix+1;
@@ -402,10 +407,10 @@ for ix_p_config = 1:height(p_mat_unique)
     
     ix_cr = round(data.rt(case_right&case_config&case_nnan)/s.dt);
     ix_cw = round(data.rt(case_wrong&case_config&case_nnan)/s.dt);
-
+    
     pRT_g_cr = pdf_cr(ix_cr)';
     pRT_g_cw = pdf_cw(ix_cw)';
-
+    
     p_RT_and_accuracy(case_right&case_config&case_nnan) = pRT_g_cr*p_cr;
     p_RT_and_accuracy(case_wrong&case_config&case_nnan) = pRT_g_cw*p_cw;
 end
