@@ -124,6 +124,11 @@ classdef ddm_def
             obj.fit(obj.fit_ix).options = minoptions;
             obj.fit(obj.fit_ix).p = px2p(obj.s.xl,fit_init.p,x);
             
+            [nll_app,aic_app,aicc_app,bic_app] = obj.opt.h_cost([],obj.fit(obj.fit_ix).p,obj.data,obj.s);
+            obj.fit(obj.fit_ix).nll = nll_app;
+            obj.fit(obj.fit_ix).aic = aic_app;
+            obj.fit(obj.fit_ix).aicc = aicc_app;
+            obj.fit(obj.fit_ix).bic = bic_app;
         end
         
         function obj = get_data(obj)
@@ -143,6 +148,16 @@ classdef ddm_def
                 obj.debi_model(obj.id_fit,'de','st'));
             
             save(fullfile(f_path,f_name),'obj');
+        end
+        
+        function [t_ups,t_dow,p_ups,p_dow] = ddm_draw(obj,p,N)
+            
+            if not(isifield(p,'c'))
+                error('Currently code needs condition to be passed here');
+            end
+            
+            [~,~,t,cdf_dow,cdf_ups] = ddm_pdf(p,obj.s.dt,obj.s.T,obj.s.ddx);
+            [t_ups,t_dow,p_ups,p_dow] = ddm_pdf2rt(cdf_ups,cdf_dow,t,N);
         end
         
         function op = debi_model(obj, ip, ip_type, op_req)
@@ -417,4 +432,32 @@ alpha_shape = (g_mea^2)/(g_std^2);
 beta_rate = (g_mea)/(g_std^2);
 A_shape = alpha_shape;
 B_scale = 1/beta_rate;
+end
+
+
+function [t_ups,t_dow,p_ups,p_dow] = ddm_pdf2rt(cdf_ups,cdf_dow,t_math,N,varargin)
+d.balanced = true;
+%%
+v = inputParser;
+addOptional(v,'balanced',d.balanced)
+parse(v,varargin{:})
+v = v.Results;
+d = [];clear d;
+%%
+p_ups = (cdf_ups(end)/(cdf_ups(end)+cdf_dow(end)));
+p_dow = 1 - p_ups;
+if v.balanced
+    N_ups = round(N*p_ups);
+    N_dow = N - N_ups;
+else
+    N_ups = N;
+    N_dow = N;
+end
+
+r_ups = rand(N_ups,1)*p_ups;
+r_dow = rand(N_dow,1)*(1-p_ups);
+[~,ix_ups] = min(abs(cdf_ups-r_ups),[],2);
+[~,ix_dow] = min(abs(cdf_dow-r_dow),[],2);
+t_ups = t_math(ix_ups);
+t_dow = t_math(ix_dow);
 end
