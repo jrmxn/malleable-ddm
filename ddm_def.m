@@ -8,12 +8,13 @@ classdef ddm_def
         id_model = -1+2^4;
         id_fit = 1;
         s = [];%settings
-        p_init = [];
+%         init = [];
         modelKey = [];
-        xl = [];
+        %         xl = [];
         data = [];
         opt = [];
         p = [];
+%         p_bound = [];
         path_data = '';
     end
     
@@ -45,31 +46,28 @@ classdef ddm_def
             else
                 error('minAlgo not defined');
             end
-            nll = ddm_cost_func([],obj.p_init,obj.data,obj.s);
             
             
-            error('need to resume here');
-            %             x = ddm_p2x(obj);
-            %             x_lb =
-            %             x_ub =
             
-            if strcmpi(computeAlgo,'PS')
+            obj.opt.init.nll = ddm_cost_func([],obj.opt.init.p,obj.data,obj.s);
+            x = p2x(obj.s.xl,obj.opt.init.p);
+            x_lb = p2x(obj.s.xl,obj.opt.init.p_lb);
+            x_ub = p2x(obj.s.xl,obj.opt.init.p_ub);
+            
+            if strcmpi(obj.opt.computeAlgo,'PS')
                 [x,Fps] = patternsearch(@(x)...
-                    ddm_cost_func(x,obj.p_init,obj.data,obj.s)...
+                    ddm_cost_func(x,obj.opt.init.p,obj.data,obj.s)...
                     ,x,[],[],[],[],x_lb,x_ub,obj.opt.minoptions);
             else
                 error('Invalid compute algo')
             end
-            
-            %             obj.p = ddm_x2p(x);
+            1;
+            obj.p = px2p(obj.s.xl,obj.opt.init.p,x);
         end
         
-        
-        
-        
+
         function obj = ddm_init(obj, id_model,id_fit)
-            %             v = inputParser;
-            
+
             obj.s.minAlgo = 'nll';
             obj.s.reinit = false;
             obj.s.dt = 1e-3;
@@ -77,35 +75,34 @@ classdef ddm_def
             obj.s.T = 5;
             obj.s.inittype = 'random';
             obj.s.path_data = '';
-            obj.opt = obj.opt_init;
             
             obj.id_model = id_model;
             obj.id_fit = id_fit;
             
             clear v id_model id_fit modelclass subject;
             
-            p_pre_init = obj.get_modeldef(['init_' obj.s.inittype]);
+            init_p_full = obj.get_modeldef(['init_' obj.s.inittype]);
             
-            obj.s.fit_n = sum(debi_model(obj.id_fit,'de','bi'));
+            obj.s.fit_n = sum(obj.debi_model(obj.id_fit,'de','bi'));
             
             
-            id_model_index = find(debi_model(obj.id_model,'de','bi'));
-            fvc  = find(debi_model(obj.id_fit,'de','bi'));
+            id_model_index = find(obj.debi_model(obj.id_model,'de','bi'));
+            id_fit_index  = find(obj.debi_model(obj.id_fit,'de','bi'));
             
             % Set the parameters over which to optimise from modelType spec
             c = 1;
             for ix_id_fit_index = 1:length(id_fit_index)
                 parameter_string = obj.modelKey{id_fit_index(ix_id_fit_index)};
-                obj.xl.(parameter_string) = c;c = c+1;
+                obj.s.xl.(parameter_string) = c;c = c+1;
             end
             
             % Now set p, using px values (which are themselves either default or loaded)
             for ix_parameter_cell = 1:length(obj.modelKey)
                 parameter_string = obj.modelKey{ix_parameter_cell};
                 if any(strcmp(parameter_string,obj.modelKey(id_model_index)))
-                    obj.p_init.(parameter_string) = p_pre_init.(parameter_string);
+                    init_p_reduced.(parameter_string) = init_p_full.(parameter_string);
                 else
-                    obj.p_init.(parameter_string) = 0;
+                    init_p_reduced.(parameter_string) = 0;
                 end
             end
             
@@ -119,13 +116,27 @@ classdef ddm_def
             end
             
             
-            
+            obj.opt = obj.opt_init;
+            obj.opt.init.p = init_p_reduced;
+            obj.opt.init.p_lb = obj.get_modeldef('lbound');
+            obj.opt.init.p_ub = obj.get_modeldef('ubound');
         end
         
         %         function obj = set_subject(obj, subject)
         %             obj.sub = subject;
         %         end
-        
+        function op = debi_model(obj, ip, ip_type, op_req)
+            if strcmpi(ip_type,'de')&&strcmpi(op_req,'bi')
+                op = de2bi(ip,22,'left-msb');
+            elseif strcmpi(ip_type,'bi')&&strcmpi(op_req,'de')
+                op = bi2de(ip,'left-msb');
+            elseif strcmpi(ip_type,'bi')&&strcmpi(op_req,'st')
+                tempX = bi2de(ip,'left-msb');
+                op = ['x' sprintf('%07d',tempX) 'x'];
+            elseif strcmpi(ip_type,'de')&&strcmpi(op_req,'st')
+                op = ['x' sprintf('%07d',ip) 'x'];
+            end
+        end
         
         
         function outputArg = get_modeldef(obj, deftype)
@@ -134,46 +145,63 @@ classdef ddm_def
             modelkey_var{ix} = 's';ix = ix+1;
             pran_.s = 1;
             pdef_.s = 1;
+            plbound_.s = 1;
+            pubound_.s = 1;
             
             modelkey_var{ix} = 'a';ix = ix+1;
             g_mea = 0.6;g_std = 0.15;
             [A_shape,B_scale] = gamma_convert(g_mea,g_std);
             pran_.a = gamrnd(A_shape,B_scale,[1,1]);
             pdef_.a = 1.0;
+            plbound_.a = 0.01;
+            pubound_.a = 7.5;
             
             modelkey_var{ix} = 't';ix = ix+1;
             g_mea = 0.3;g_std = 0.075;
             [A_shape,B_scale] = gamma_convert(g_mea,g_std);
             pran_.t = gamrnd(A_shape,B_scale,[1,1]);
             pdef_.t = 0.25;
+            plbound_.t = 0.1;
+            pubound_.t = 0.75;
             
             modelkey_var{ix} = 'v';ix = ix+1;
             g_mea = 3;g_std = 1;
             [A_shape,B_scale] = gamma_convert(g_mea,g_std);
             pran_.v = gamrnd(A_shape,B_scale,[1,1]);
-            pdef_.v = 1.0;
+            pdef_.v = 0.0;
+            plbound_.v = -7.5;
+            pubound_.v = 7.5;
             
             modelkey_var{ix} = 'b';ix = ix+1;
             g_sd = 2.5;
             pran_.b = abs(normrnd(0,g_sd));
             pdef_.b = 0.0;
+            plbound_.b = 0;
+            pubound_.b = 20;
             
             modelkey_var{ix} = 'xb';ix = ix+1;
             g_mea = 0.1;g_std = 0.06;
             [A_shape,B_scale] = gamma_convert(g_mea,g_std);
             pran_.xb = gamrnd(A_shape,B_scale,[1,1]);
             pdef_.xb = 0.0;
+            plbound_.xb = 0;
+            pubound_.xb = [20];%could def be changed
             
             modelkey_var{ix} = 'st';ix = ix+1;
             g_lo = 0;
             g_up = 0.15;
             pran_.st = unifrnd(g_lo,g_up);
             pdef_.st = 0.0;
+            plbound_.st = 0;
+            pubound_.st = 0.5;
             
             modelkey_var{ix} = 'sx';ix = ix+1;
             pran_.sx = 0;            %not implemented
-            pdef_.sx = 0.0;
+            pdef_.sx = 0;
+            plbound_.st = 0;
+            pubound_.st = plbound_.a(end)/2;
             
+            ix = ix;clear ix;
             for ix_modelkey_var = 1:length(modelkey_var)
                 modelkey_rev.(modelkey_var{ix_modelkey_var}) = ix_modelkey_var;
             end
@@ -186,17 +214,39 @@ classdef ddm_def
                 outputArg = pran_;
             elseif strcmpi(deftype,'init_default')
                 outputArg = pdef_;
+            elseif strcmpi(deftype,'lbound')
+                outputArg = plbound_;
+            elseif strcmpi(deftype,'ubound')
+                outputArg = pubound_;
             end
         end
         
-
+        
     end
 end
 
+function x = p2x(xl,p)
+vec_xl = fieldnames(xl);
+x = nan(1,length(vec_xl));
+for ix_vec_xl = 1:length(vec_xl)
+    x_index = xl.(vec_xl{ix_vec_xl});
+    x_value = p.(vec_xl{ix_vec_xl});
+    x(x_index) = x_value;
+end
+end
+
+function p = px2p(xl,p,x)
+vec_xl = fieldnames(xl);
+for ix_vec_xl = 1:length(vec_xl)
+    x_index = xl.(vec_xl{ix_vec_xl});
+    x_value = x(x_index);
+    p.(vec_xl{ix_vec_xl}) = x_value;
+end
+end
 
 function [nll_app,aic_app,aicc_app,bic_app] = ddm_cost_pdf_nll(x,p,data,s)
 if not(isempty(x))
-    error('not implemented, need to overwrite p with x at specific points');
+    p = px2p(s.xl,p,x);
 end
 p_RT_and_accuracy = nan(height(data),1);
 
