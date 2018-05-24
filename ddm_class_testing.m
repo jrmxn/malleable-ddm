@@ -21,6 +21,11 @@ sr.path_data = 'testing.csv';
 
 sr = sr.ddm_init(id_model,id_fit);
 sr.opt.MaxIter = 20;
+%If this isn't run manually it runs automatically.
+%But it allows modifications to be made for new branches of model fits - 
+%E.g. initialise a new model, but then get the initial p from somewhere
+%else. Or write other search initialisation functions.
 sr = sr.ddm_search;
+sr = sr.ddm_search_init;
 sr = sr.ddm_search;
 sr.ddm_save;
