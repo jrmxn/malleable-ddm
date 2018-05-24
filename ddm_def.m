@@ -6,7 +6,7 @@ classdef ddm_def < handle
         subject = '';
         modelclass = '';
         id_model = -1+2^4;
-        id_fit = 1;
+        id_search = 1;
         path_data = '';
         fit_ix = 0;
         modelKey = [];
@@ -19,7 +19,7 @@ classdef ddm_def < handle
     end
     
     methods
-        function ddm_def(modelclass)
+        function obj = ddm_def(modelclass)
             %light initialisation so functions can be used easily
             obj.modelclass = modelclass;
             obj.modelKey = ddm_def_instance(obj, 'keyf');
@@ -27,17 +27,17 @@ classdef ddm_def < handle
             obj.info.date = datetime;
         end
         
-        function ddm_init(obj, id_model,id_fit)
+        function ddm_init(obj, id_model,id_search)
             %Set the simulation settings (s), and the optimisation settings
             %(opt). id_model and if_fit (which are decimals,
             % which correspond to binary vectors referencing the
             % parameters) get set.
-            % additionally id_fit gets translated into xl which holds the
+            % additionally id_search gets translated into xl which holds the
             % fit parameters as strings in a cell.
             obj.id_model = id_model;
-            obj.id_fit = id_fit;
+            obj.id_search = id_search;
             
-            obj.s.fit_n = sum(obj.debi_model(obj.id_fit,'de','bi'));
+            obj.s.fit_n = sum(obj.debi_model(obj.id_search,'de','bi'));
             obj.s.minAlgo = 'nll';
             obj.s.reinit = false;
             obj.s.dt = 1e-3;
@@ -46,12 +46,12 @@ classdef ddm_def < handle
             obj.s.inittype = 'random';
             obj.s.path_data = '';
             
-            id_fit_index  = find(obj.debi_model(obj.id_fit,'de','bi'));
+            id_search_index  = find(obj.debi_model(obj.id_search,'de','bi'));
             
             % Set the parameters over which to optimise from modelType spec
             co = 1;
-            for ix_id_fit_index = 1:length(id_fit_index)
-                parameter_string = obj.modelKey{id_fit_index(ix_id_fit_index)};
+            for ix_id_search_index = 1:length(id_search_index)
+                parameter_string = obj.modelKey{id_search_index(ix_id_search_index)};
                 obj.s.xl.(parameter_string) = co;co = co+1;
             end
             
@@ -74,7 +74,7 @@ classdef ddm_def < handle
 % which then initialises it, but doesn't actually increase sr.fit_ix which
 % is then increased in ddm_fit
             if isempty(obj.data)
-                obj = get_data(obj);
+                get_data(obj);
             end
             
 %             if not(length(obj.fit)==obj.fit_ix)
@@ -99,6 +99,10 @@ classdef ddm_def < handle
                 fit_init.p = init_p_reduced;
             else
                 fprintf('Resuming from previous fit.\n');
+                
+                same_model = obj.fit(fit_ix_-1).id_model==obj.id_model;
+                same_search = obj.fit(fit_ix_-1).id_search==obj.id_search;
+                if not(same_model|same_search),fprintf('With a new model!\n');end
                 fit_init.p = obj.fit(fit_ix_-1).p;
             end
             fit_init.nll = obj.opt.h_cost([],fit_init.p,obj.data,obj.s);
@@ -148,7 +152,7 @@ classdef ddm_def < handle
             
             %re-save this data with the fit
             obj.fit(fit_ix_).id_model = obj.id_model;
-            obj.fit(fit_ix_).id_fit = obj.id_fit;
+            obj.fit(fit_ix_).id_search = obj.id_search;
             obj.fit(fit_ix_).s = obj.s;
             obj.fit(fit_ix_).modelKey = obj.modelKey;
             obj.fit(fit_ix_).opt = obj.opt;
@@ -160,7 +164,7 @@ classdef ddm_def < handle
         end
         
         function ddm_mcmc(obj,varargin)
-            d.mccount = 1e3;
+            d.mccount = 25e3;
             d.ThinChain = 5;
             d.doParallel = true;
             d.n_s = 25;
@@ -254,7 +258,7 @@ classdef ddm_def < handle
             f_name = sprintf('%s_%s_%s.mat',...
                 obj.subject,...
                 obj.debi_model(obj.id_model,'de','st'),...
-                obj.debi_model(obj.id_fit,'de','st'));
+                obj.debi_model(obj.id_search,'de','st'));
             
             save(fullfile(f_path,f_name),'obj');
         end
