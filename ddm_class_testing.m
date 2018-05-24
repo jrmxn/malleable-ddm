@@ -19,16 +19,16 @@ id_fit = sr.debi_model(id_fit,'bi','de');
 sr.subject = 'sub01';
 sr.path_data = 'testing.csv';
 
-sr = sr.ddm_init(id_model,id_fit);
+sr.ddm_init(id_model,id_fit);
 %If this isn't run manually it runs automatically.
 %But it allows modifications to be made for new branches of model fits - 
 %E.g. initialise a new model, but then get the initial p from somewhere
 %else. Or write other search initialisation functions.
-sr = sr.ddm_fit;
-sr = sr.ddm_fit_init;
-sr = sr.ddm_fit;
-sr.ddm_save;
-%%
+sr.opt.MaxIter = 10;
+sr.ddm_fit;
+% sr = sr.ddm_fit_init;
+% sr = sr.ddm_fit;
+% sr.ddm_save;
 px = sr.fit(end).p;px.c = 1;
 %make 100 draws from the pdf
 sr.ddm_data_draw(px,100);

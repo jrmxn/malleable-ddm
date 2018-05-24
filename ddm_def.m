@@ -19,7 +19,7 @@ classdef ddm_def < handle
     end
     
     methods
-        function obj = ddm_def(modelclass)
+        function ddm_def(modelclass)
             %light initialisation so functions can be used easily
             obj.modelclass = modelclass;
             obj.modelKey = ddm_def_instance(obj, 'keyf');
@@ -27,7 +27,7 @@ classdef ddm_def < handle
             obj.info.date = datetime;
         end
         
-        function obj = ddm_init(obj, id_model,id_fit)
+        function ddm_init(obj, id_model,id_fit)
             %Set the simulation settings (s), and the optimisation settings
             %(opt). id_model and if_fit (which are decimals,
             % which correspond to binary vectors referencing the
@@ -68,18 +68,21 @@ classdef ddm_def < handle
             
         end
         
-        function obj = ddm_fit_init(obj)
-            
+        function ddm_fit_init(obj,fit_ix_)
+            %if you want to run this manually you run it like this:
+%             sr.ddm_fit_init(sr.fit_ix + 1)
+% which then initialises it, but doesn't actually increase sr.fit_ix which
+% is then increased in ddm_fit
             if isempty(obj.data)
                 obj = get_data(obj);
             end
             
-            if not(length(obj.fit)==obj.fit_ix)
-                error('We already have an initialised fit here');
-            end
-            obj.fit_ix = obj.fit_ix + 1;
+%             if not(length(obj.fit)==obj.fit_ix)
+%                 error('We already have an initialised fit here');
+%             end
+%             obj.fit_ix = obj.fit_ix + 1;
             
-            if obj.fit_ix==1
+            if fit_ix_==1
                 %p is defined from a full set of defaults/random init
                 init_p_full = obj.ddm_def_instance(['init_' obj.s.inittype]);
                 % and now we need to reduce it to match the specific model
@@ -95,25 +98,26 @@ classdef ddm_def < handle
                 end
                 fit_init.p = init_p_reduced;
             else
-                fprintf('Resuming from previous fit\n');
-                fit_init.p = obj.fit(obj.fit_ix-1).p;
+                fprintf('Resuming from previous fit.\n');
+                fit_init.p = obj.fit(fit_ix_-1).p;
             end
             fit_init.nll = obj.opt.h_cost([],fit_init.p,obj.data,obj.s);
             fit_init.p_lb = obj.ddm_def_instance('lbound');
             fit_init.p_ub = obj.ddm_def_instance('ubound');
             
-            obj.fit(obj.fit_ix).init = fit_init;
+            obj.fit(fit_ix_).init = fit_init;
         end
         
-        function obj = ddm_fit(obj)
+        function ddm_fit(obj)
+            fit_ix_ = obj.fit_ix + 1;
             
-            if obj.fit_ix==0
-                obj = ddm_fit_init(obj);
+            if length(obj.fit)<fit_ix_
+                ddm_fit_init(obj,fit_ix_);
+            else
+                fprintf('Assuming ddm fit was manually initialised.\n');
             end
-            if not(isfield(obj.fit(obj.fit_ix),'init'))
-                obj = ddm_fit_init(obj);
-            end
-            fit_init = obj.fit(obj.fit_ix).init;
+
+            fit_init = obj.fit(fit_ix_).init;
             
             x = p2x(obj.s.xl,fit_init.p);
             x_lb = p2x(obj.s.xl,fit_init.p_lb);
@@ -133,26 +137,29 @@ classdef ddm_def < handle
             else
                 error('Invalid compute algo')
             end
-            obj.fit(obj.fit_ix).options = minoptions;
-            obj.fit(obj.fit_ix).p = px2p(obj.s.xl,fit_init.p,x);
+            obj.fit(fit_ix_).options = minoptions;
+            obj.fit(fit_ix_).p = px2p(obj.s.xl,fit_init.p,x);
             
-            [nll_app,aic_app,aicc_app,bic_app] = obj.opt.h_cost([],obj.fit(obj.fit_ix).p,obj.data,obj.s);
-            obj.fit(obj.fit_ix).nll = nll_app;
-            obj.fit(obj.fit_ix).aic = aic_app;
-            obj.fit(obj.fit_ix).aicc = aicc_app;
-            obj.fit(obj.fit_ix).bic = bic_app;
+            [nll_app,aic_app,aicc_app,bic_app] = obj.opt.h_cost([],obj.fit(fit_ix_).p,obj.data,obj.s);
+            obj.fit(fit_ix_).nll = nll_app;
+            obj.fit(fit_ix_).aic = aic_app;
+            obj.fit(fit_ix_).aicc = aicc_app;
+            obj.fit(fit_ix_).bic = bic_app;
             
             %re-save this data with the fit
-            obj.fit(obj.fit_ix).id_model = obj.id_model;
-            obj.fit(obj.fit_ix).id_fit = obj.id_fit;
-            obj.fit(obj.fit_ix).s = obj.s;
-            obj.fit(obj.fit_ix).modelKey = obj.modelKey;
-            obj.fit(obj.fit_ix).opt = obj.opt;
-            obj.fit(obj.fit_ix).info = obj.info;
-            
+            obj.fit(fit_ix_).id_model = obj.id_model;
+            obj.fit(fit_ix_).id_fit = obj.id_fit;
+            obj.fit(fit_ix_).s = obj.s;
+            obj.fit(fit_ix_).modelKey = obj.modelKey;
+            obj.fit(fit_ix_).opt = obj.opt;
+            obj.fit(fit_ix_).info = obj.info;
+            %this is here, because we don't want to increment it if
+            %something crashes before this function ends.
+            obj.fit_ix = fit_ix_;
+
         end
         
-        function obj = ddm_mcmc(obj,varargin)
+        function ddm_mcmc(obj,varargin)
             d.mccount = 1e3;
             d.ThinChain = 5;
             d.doParallel = true;
@@ -223,7 +230,7 @@ classdef ddm_def < handle
             %should add a way to resume these I guess.
         end
         
-        function obj = get_data(obj)
+        function get_data(obj)
             if not(isempty(obj.subject))
                 data_ = readtable(obj.path_data);
                 if isnumeric(data_.subject)
@@ -242,7 +249,7 @@ classdef ddm_def < handle
             end
         end
         
-        function obj = ddm_save(obj,f_path)
+        function ddm_save(obj,f_path)
             if not(exist('f_path','var')==1),f_path = '';end
             f_name = sprintf('%s_%s_%s.mat',...
                 obj.subject,...
