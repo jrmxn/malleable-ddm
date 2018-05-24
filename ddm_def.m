@@ -7,67 +7,99 @@ classdef ddm_def
         modelclass = '';
         id_model = -1+2^4;
         id_fit = 1;
-        s = [];%settings
-%         init = [];
+        s = [];
         modelKey = [];
-        %         xl = [];
         data = [];
         opt = [];
-        p = [];
-%         p_bound = [];
+        fit = [];
         path_data = '';
+        fit_ix = 0;
     end
     
     methods
         function obj = ddm_def(modelclass)
+            %light initialisation so functions can be used easily
             obj.modelclass = modelclass;
             obj.modelKey = get_modeldef(obj, 'keyf');
         end
         
-        function opt = opt_init(obj)
-            opt.TolX = 1e-5;
-            opt.MaxIter = 1000;
-            opt.parallelsearch = true;
-            opt.ps_AccelerateMesh = true;%should only do if smooth
-            opt.computeAlgo = 'PS';
+        function obj = get_data(obj)
+            if not(isempty(obj.subject))
+                data_ = readtable(obj.path_data);
+                data_ = data_(strcmpi(data_.subject,obj.subject),:);
+                if not(height(data_)>0),error('Bad subject spec?');end
+                obj.data = data_;
+            end
         end
         
         function obj = ddm_search(obj)
+            if isempty(obj.data)
+                obj = get_data(obj);
+            end
+            
+            obj.fit_ix = obj.fit_ix + 1;
+            
+            if obj.fit_ix==1
+                init_p_full = obj.get_modeldef(['init_' obj.s.inittype]);
+                id_model_index = find(obj.debi_model(obj.id_model,'de','bi'));
+                % Now set p, using px values (which are themselves either default or loaded)
+                for ix_parameter_cell = 1:length(obj.modelKey)
+                    parameter_string = obj.modelKey{ix_parameter_cell};
+                    if any(strcmp(parameter_string,obj.modelKey(id_model_index)))
+                        init_p_reduced.(parameter_string) = init_p_full.(parameter_string);
+                    else
+                        init_p_reduced.(parameter_string) = 0;
+                    end
+                end
+                fit_init.p = init_p_reduced;
+            else
+                fprintf('Resuming from previous fit\n');
+                fit_init.p = obj.fit(obj.fit_ix-1).p;
+            end
+            fit_init.nll = obj.opt.h_cost([],fit_init.p,obj.data,obj.s);
+            fit_init.p_lb = obj.get_modeldef('lbound');
+            fit_init.p_ub = obj.get_modeldef('ubound');
+            
+            x = p2x(obj.s.xl,fit_init.p);
+            x_lb = p2x(obj.s.xl,fit_init.p_lb);
+            x_ub = p2x(obj.s.xl,fit_init.p_ub);
+            
             if strcmpi(obj.opt.computeAlgo,'PS')
-                obj.opt.minoptions = optimoptions(@patternsearch,'Display','iter',...
+                
+                minoptions = optimoptions(@patternsearch,'Display','iter',...
                     'MaxIter',obj.opt.MaxIter,'TolFun',obj.opt.TolX,'TolX',obj.opt.TolX,...
                     'MaxFunEvals',obj.opt.MaxIter*2,'StepTolerance',1e-3,...
                     'InitialMeshSize',2,'AccelerateMesh',obj.opt.ps_AccelerateMesh,...
                     'UseParallel',obj.opt.parallelsearch,'UseCompletePoll',obj.opt.parallelsearch);%,
-            end
-            
-            if strcmpi(obj.s.minAlgo,'nll')
-                ddm_cost_func = @ddm_cost_pdf_nll;
-            else
-                error('minAlgo not defined');
-            end
-            
-            
-            
-            obj.opt.init.nll = ddm_cost_func([],obj.opt.init.p,obj.data,obj.s);
-            x = p2x(obj.s.xl,obj.opt.init.p);
-            x_lb = p2x(obj.s.xl,obj.opt.init.p_lb);
-            x_ub = p2x(obj.s.xl,obj.opt.init.p_ub);
-            
-            if strcmpi(obj.opt.computeAlgo,'PS')
+                
                 [x,Fps] = patternsearch(@(x)...
-                    ddm_cost_func(x,obj.opt.init.p,obj.data,obj.s)...
-                    ,x,[],[],[],[],x_lb,x_ub,obj.opt.minoptions);
+                    obj.opt.h_cost(x,fit_init.p,obj.data,obj.s)...
+                    ,x,[],[],[],[],x_lb,x_ub,minoptions);
             else
                 error('Invalid compute algo')
             end
-            1;
-            obj.p = px2p(obj.s.xl,obj.opt.init.p,x);
+            obj.fit(obj.fit_ix).options = minoptions;
+            obj.fit(obj.fit_ix).init = fit_init;
+            obj.fit(obj.fit_ix).p = px2p(obj.s.xl,fit_init.p,x);
+            
         end
         
-
+        function obj = ddm_save(obj,f_path)
+            if not(exist('f_path','var')==1),f_path = '';end
+            f_name = sprintf('%s_%s_%s.mat',...
+                obj.subject,...
+                obj.debi_model(obj.id_model,'de','st'),...
+                obj.debi_model(obj.id_fit,'de','st'));
+            
+            save(fullfile(f_path,f_name),'obj');
+        end
+        
         function obj = ddm_init(obj, id_model,id_fit)
-
+            
+            obj.id_model = id_model;
+            obj.id_fit = id_fit;
+            
+            obj.s.fit_n = sum(obj.debi_model(obj.id_fit,'de','bi'));
             obj.s.minAlgo = 'nll';
             obj.s.reinit = false;
             obj.s.dt = 1e-3;
@@ -76,17 +108,6 @@ classdef ddm_def
             obj.s.inittype = 'random';
             obj.s.path_data = '';
             
-            obj.id_model = id_model;
-            obj.id_fit = id_fit;
-            
-            clear v id_model id_fit modelclass subject;
-            
-            init_p_full = obj.get_modeldef(['init_' obj.s.inittype]);
-            
-            obj.s.fit_n = sum(obj.debi_model(obj.id_fit,'de','bi'));
-            
-            
-            id_model_index = find(obj.debi_model(obj.id_model,'de','bi'));
             id_fit_index  = find(obj.debi_model(obj.id_fit,'de','bi'));
             
             % Set the parameters over which to optimise from modelType spec
@@ -96,35 +117,19 @@ classdef ddm_def
                 obj.s.xl.(parameter_string) = c;c = c+1;
             end
             
-            % Now set p, using px values (which are themselves either default or loaded)
-            for ix_parameter_cell = 1:length(obj.modelKey)
-                parameter_string = obj.modelKey{ix_parameter_cell};
-                if any(strcmp(parameter_string,obj.modelKey(id_model_index)))
-                    init_p_reduced.(parameter_string) = init_p_full.(parameter_string);
-                else
-                    init_p_reduced.(parameter_string) = 0;
-                end
+            obj.opt.TolX = 1e-5;
+            obj.opt.MaxIter = 1000;
+            obj.opt.parallelsearch = true;
+            obj.opt.ps_AccelerateMesh = true;%should only do if smooth
+            obj.opt.computeAlgo = 'PS';
+            if strcmpi(obj.s.minAlgo,'nll')
+                obj.opt.h_cost = @ddm_cost_pdf_nll;
+            else
+                error('minAlgo not defined');
             end
             
-            if not(isempty(obj.subject))
-                data_ = readtable(obj.path_data);
-                %                 data.subject = cell2mat(data.subject);
-                data_ = data_(strcmpi(data_.subject,obj.subject),:);
-                if not(height(data_)>0),error('Bad subject spec?');end
-                obj.data = data_;
-                
-            end
-            
-            
-            obj.opt = obj.opt_init;
-            obj.opt.init.p = init_p_reduced;
-            obj.opt.init.p_lb = obj.get_modeldef('lbound');
-            obj.opt.init.p_ub = obj.get_modeldef('ubound');
         end
         
-        %         function obj = set_subject(obj, subject)
-        %             obj.sub = subject;
-        %         end
         function op = debi_model(obj, ip, ip_type, op_req)
             if strcmpi(ip_type,'de')&&strcmpi(op_req,'bi')
                 op = de2bi(ip,22,'left-msb');
@@ -265,25 +270,12 @@ for ix_p_config = 1:height(p_mat_unique)
     p_cr = cdf_cr(end);
     p_cw = cdf_cw(end);
     
-    
     %accuracy coding at the moment... should make this flexible
     case_right = logical(data.choice);
     case_wrong = not(case_right);
     case_config = all(p_mat_array==px_array,2);
     case_nnan = not(isnan(data.rt));
-    %     case_config =
-    % %     B = rowfun(@hypot,A,'OutputVariableNames','z')
     
-    %     case_incorrect = data.sub_choice=='incorrect';
-    %     case_cong_incong = dataSummary.StimVar==px.ip;
-    
-    if size(t,1)>size(t,2)
-        error('vec_t has to be a row vector');
-    end
-    
-    
-    %     X = dataSummary.(case_quest).extra.full.(caseCond_ca){1}-t;
-    %     [~,ix_ca] = min((abs(X)),[],2);
     ix_cr = round(data.rt(case_right&case_config&case_nnan)/s.dt);
     ix_cw = round(data.rt(case_wrong&case_config)/s.dt);
     

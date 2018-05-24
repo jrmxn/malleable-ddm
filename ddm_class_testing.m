@@ -1,3 +1,4 @@
+clear;
 sr = ddm_def('');
 mk = sr.get_modeldef('keyr');
 %%
@@ -19,5 +20,7 @@ sr.subject = 'PRPAE';
 sr.path_data = 'testing.csv';
 
 sr = sr.ddm_init(id_model,id_fit);
-sr.opt.MaxIter = 5;
+sr.opt.MaxIter = 20;
 sr = sr.ddm_search;
+sr = sr.ddm_search;
+sr.ddm_save;
