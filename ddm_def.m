@@ -184,6 +184,7 @@ classdef ddm_def
                 %chains proportional to how close they are to the optimal
                 %found by patternsearch.
                 % generate a bunch of candidate parameters
+                fprintf('Running MCMC initialisation based on pattern search...\n');
                 n_init_rand = 5e3;
                 x_rand = nan(n_init_rand,obj.s.fit_n);
                 for ix_draw_prior = 1:n_init_rand
@@ -198,6 +199,7 @@ classdef ddm_def
                 abc(abc<0) = inf;
                 [~,ix_x_rand] = min(abs(abc));
                 minit = x_rand(ix_x_rand,:)';
+                fprintf('Done.\n');
             end
             
             %use most uptodata p value
@@ -213,6 +215,7 @@ classdef ddm_def
             logprior = @(m) prior_likelihood(m, xl, h_priors);
             logPfuns = {@(m)logprior(m) @(m)loglike(m)};
             
+            fprintf('Starting mcmc...\n');
             [models,logp]=gwmcmc(minit,logPfuns,opt_.mccount,'Parallel',opt_.doParallel,'BurnIn',opt_.BurnIn,'ThinChain',opt_.ThinChain);
             obj.mcmc(obj.fit_ix).models = models;
             obj.mcmc(obj.fit_ix).logp = logp;
