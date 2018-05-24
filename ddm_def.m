@@ -1,4 +1,4 @@
-classdef ddm_def
+classdef ddm_def < handle
     %DDM_DEF Summary of this class goes here
     %   Detailed explanation goes here
     
