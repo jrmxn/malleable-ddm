@@ -24,6 +24,7 @@ classdef ddm_def
             obj.modelclass = modelclass;
             obj.modelKey = ddm_def_instance(obj, 'keyf');
             obj.info.version = sprintf('%0.3f',0);
+            obj.info.date = datetime;
         end
         
         function obj = ddm_init(obj, id_model,id_fit)
@@ -43,10 +44,10 @@ classdef ddm_def
             id_fit_index  = find(obj.debi_model(obj.id_fit,'de','bi'));
             
             % Set the parameters over which to optimise from modelType spec
-            c = 1;
+            co = 1;
             for ix_id_fit_index = 1:length(id_fit_index)
                 parameter_string = obj.modelKey{id_fit_index(ix_id_fit_index)};
-                obj.s.xl.(parameter_string) = c;c = c+1;
+                obj.s.xl.(parameter_string) = co;co = co+1;
             end
             
             obj.opt.TolX = 1e-5;
@@ -135,6 +136,15 @@ classdef ddm_def
             obj.fit(obj.fit_ix).aic = aic_app;
             obj.fit(obj.fit_ix).aicc = aicc_app;
             obj.fit(obj.fit_ix).bic = bic_app;
+            
+            %re-save this data with the fit
+            obj.fit(obj.fit_ix).id_model = obj.id_model;
+            obj.fit(obj.fit_ix).id_fit = obj.id_fit;
+            obj.fit(obj.fit_ix).s = obj.s;
+            obj.fit(obj.fit_ix).modelKey = obj.modelKey;
+            obj.fit(obj.fit_ix).opt = obj.opt;
+            obj.fit(obj.fit_ix).info = obj.info;
+            
         end
         
         function obj = ddm_mcmc(obj,varargin)
