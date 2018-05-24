@@ -94,11 +94,13 @@ classdef ddm_def
             
             obj.fit(obj.fit_ix).init = fit_init;
         end
+        
         function obj = ddm_search(obj)
             
+            if obj.fit_ix==0
+                obj = ddm_search_init(obj);
+            end
             if not(isfield(obj.fit(obj.fit_ix),'init'))
-                fprintf('Setting initial parameters for search automatically.\n');
-                fprintf('ddm_search_init can be run manually prior to ddm_search to make adjustments.\n');
                 obj = ddm_search_init(obj);
             end
             fit_init = obj.fit(obj.fit_ix).init;
@@ -228,7 +230,7 @@ classdef ddm_def
             pran_.st = unifrnd(g_lo,g_up);
             pdef_.st = 0.0;
             plbound_.st = 0;
-            pubound_.st = 0.5;
+            pubound_.st = 0.5;                
             
             modelkey_var{ix} = 'sx';ix = ix+1;
             pran_.sx = 0;            %not implemented
@@ -325,7 +327,7 @@ if isnan(ll_app),ll_app=-inf;end
 k = length(s.fit_n)+1;%number of free params + 1 for noise
 n = length(p_RT_and_accuracy);
 %prob an issue here with thr fact that some trials are kicked out..
-bic_app = log(n)*k-2*ll_app;
+bic_app = log(n)*k-2*ll_app;                
 aic_app = 2*k-2*ll_app;
 aicc_app = aic_app + (2*(k^2) + 2*k)/(n-k-1);
 nll_app = -ll_app;
@@ -352,10 +354,11 @@ xvm_prev = repmat(xz',length(xz),1);
 if p.sx == 0
     z0 = zeros(length(xz),1);
     z0(zeroStateIx,1) = 1;
-    %             else
-    % 	z0 = normpdf(xz,xz(zeroStateIx),p.sx);
-    %                 z0 = unifpdf(xz,xz(zeroStateIx)-p.s_x0,xz(zeroStateIx)+p.sx);
-    %                 z0 = z0/sum(z0);
+else
+                    error('not sure if should be gaussian or uniform');
+%     	z0 = normpdf(xz,xz(zeroStateIx),p.sx);
+                    z0 = unifpdf(xz,xz(zeroStateIx)-p.s_x0,xz(zeroStateIx)+p.sx);
+                    z0 = z0/sum(z0);
 end
 %
 sig = p.s*sqrt(dt);
@@ -426,6 +429,61 @@ cdf_dow = cdf_dow/(cdf_ups_end+cdf_dow_end);
 pdf_ups = diff(cdf_ups)/dt;
 pdf_dow = diff(cdf_dow)/dt;
 end
+
+
+function [vec_rt,vec_correct,x,td_tot] = ddm_bru_core(p,dt,T,N_its)
+
+%%
+linspace_t = 0:dt:T-dt;
+t_math = linspace_t(1:end-1)+dt/2;
+%%
+maxIterations = floor(T/dt);
+if length(linspace_t)~=maxIterations,error('Messed up time code');end
+%% 
+x0 = (-(2*p.c-1)*p.xb);
+x0_trial = 2*(rand(N_its,1)-0.5)*(p.sx) + x0;%n.b. this one is uniform.
+x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
+x_drift = repmat(p.v*(1+p.c*p.b*t_math)*dt,1,maxIterations);
+%%
+x = nan(N_its,maxIterations);
+x(:,1) = x0_trial;
+
+for ix_t = 2:maxIterations
+        %need to check this before it gets used:
+        error('Mistake in specification of x_drift (wrong dimensions)');
+        x(:,ix_t) = x(:,ix_t-1) + x_noise(:,ix_t) + x_drift(:,ix_t);
+end
+%%
+x_threshold = +a;
+[~,x_upper]=sort(x>x_threshold,2,'descend');% should the sign here be the same????
+x_upper=x_upper(:,1);
+x_upper(x_upper==1) = nan;
+
+x_threshold = -a;
+[~,x_lower]=sort(x<x_threshold,2,'descend');% should the sign here be the same????
+x_lower=x_lower(:,1);
+x_lower(x_lower==1) = nan;
+
+x_bounds = [x_upper,x_lower];
+x_bounds = gather(x_bounds);
+[ix_time,vec_correct] = nanmin(x_bounds,[],2);
+ix_time(isnan(ix_time)) = length(linspace_t);%not sure if this is best way to deal with problem...
+vec_rt = linspace_t(ix_time)';
+% don't think the time shift can change winner/loser so do it here.
+
+td_tot = p.t + 2*(rand(N_its,1)-0.5)*p.st;
+vec_rt = vec_rt + td_tot;
+
+vec_correct = vec_correct==1;
+end
+function [pdf_dow,pdf_ups,t_math,cdf_dow,cdf_ups] = ddm_bru(p,dt,T,N_its)
+
+[vec_rt,vec_correct,x,td_tot] = ddm_bru_core(p,dt,T,N_its);
+error('Need to write conversion to pdf here');
+
+end
+
+
 
 function [A_shape,B_scale] = gamma_convert(g_mea,g_std)
 alpha_shape = (g_mea^2)/(g_std^2);
