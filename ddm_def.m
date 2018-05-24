@@ -14,6 +14,8 @@ classdef ddm_def
         fit = [];
         path_data = '';
         fit_ix = 0;
+        info = [];
+        mcmc = [];
     end
     
     methods
@@ -21,7 +23,9 @@ classdef ddm_def
             %light initialisation so functions can be used easily
             obj.modelclass = modelclass;
             obj.modelKey = get_modeldef(obj, 'keyf');
+            obj.info.version = sprintf('%0.3f',0);
         end
+        
         function obj = ddm_init(obj, id_model,id_fit)
             
             obj.id_model = id_model;
@@ -133,10 +137,83 @@ classdef ddm_def
             obj.fit(obj.fit_ix).bic = bic_app;
         end
         
+        function obj = ddm_mcmc(obj)
+            
+            function ll = prior_likelihood(x,xl,h_priors)
+                vec_xl = fieldnames(xl);
+                ll = nan(1,length(vec_xl));
+                for ix_vec_xl = 1:length(vec_xl)
+                    x_index = xl.(vec_xl{ix_vec_xl});
+                    x_value = x(x_index);
+                    ll(x_index) = h_priors.(vec_xl{ix_vec_xl})(x_value);
+                end
+                ll = sum(log(ll));
+            end
+            
+            function minit = ddm_mcmc_minit(obj,x,xl,n_s)
+                %this is a bit ad-hoc, but I am getting the starting
+                %chains proportional to how close they are to the optimal
+                %found by patternsearch.
+                % generate a bunch of candidate parameters
+                n_init_rand = 5e3;
+                x_rand = nan(n_init_rand,obj.s.fit_n);
+                for ix_draw_prior = 1:n_init_rand
+                    x_rand(ix_draw_prior,:) = p2x(xl,get_modeldef(obj, 'init_random'));
+                end
+                %get distance from ps optimum
+                xd = x_rand-x;
+                %normalise and convert to larger if closer to x
+                xd = 1./rms(xd./std(xd,1),2);
+                abc = cumsum(xd/sum(xd))-rand(1,n_s);
+                %choose values proportional to their size
+                abc(abc<0) = inf;
+                [~,ix_x_rand] = min(abs(abc));
+                minit = x_rand(ix_x_rand,:)';
+            end
+            
+            
+            opt_.mccount = 5e5;%5e5
+            opt_.ThinChain = 1;
+            opt_.doParallel = true;
+            opt_.n_s = 50;
+            opt_.BurnIn = 0.25;
+            
+            p = obj.fit(end).p;
+            xl = obj.s.xl;
+            h_priors = get_modeldef(obj, 'prior');
+            x = p2x(xl,p);
+            
+            minit = ddm_mcmc_minit(obj,x,xl,opt_.n_s);
+            
+            %negative because by default cost function returns the nll
+            loglike = @(m) -obj.opt.h_cost(m,p,obj.data,obj.s);
+            logprior = @(m) prior_likelihood(m, xl, h_priors);
+            logPfuns = {@(m)logprior(m) @(m)loglike(m)};
+            
+            [models,logp]=gwmcmc(minit,logPfuns,opt_.mccount,'Parallel',opt_.doParallel,'BurnIn',opt_.BurnIn,'ThinChain',opt_.ThinChain);
+            obj.mcmc.models = models;
+            obj.mcmc.logp = logp;
+            obj.mcmc.opt = opt_;
+            %should add a way to resume these I guess.
+        end
+        
+        function ddm_mcmc_prior(h_priors)
+        end
+        
         function obj = get_data(obj)
             if not(isempty(obj.subject))
                 data_ = readtable(obj.path_data);
-                data_ = data_(strcmpi(data_.subject,obj.subject),:);
+                if isnumeric(data_.subject)
+                    case_subject = data_.subject == obj.subject;
+                else
+                    case_subject = strcmpi(data_.subject,obj.subject);
+                end
+                
+                
+                if iscell(data_.choice)
+                    error('Maybe you have a string in choice field?');
+                end
+                data_ = data_(case_subject,:);
                 if not(height(data_)>0),error('Bad subject spec?');end
                 obj.data = data_;
             end
@@ -152,7 +229,7 @@ classdef ddm_def
             save(fullfile(f_path,f_name),'obj');
         end
         
-        function [t_ups,t_dow,p_ups,p_dow] = ddm_draw(obj,p,N)
+        function [t_ups,t_dow,p_ups,p_dow] = ddm_data_draw(obj,p,N)
             
             if not(isfield(p,'c'))
                 error('Currently code needs condition to be passed here');
@@ -184,6 +261,7 @@ classdef ddm_def
             pdef_.s = 1;
             plbound_.s = 1;
             pubound_.s = 1;
+            prior_.s = @(x) 1;
             
             modelkey_var{ix} = 'a';ix = ix+1;
             g_mea = 0.6;g_std = 0.15;
@@ -192,6 +270,8 @@ classdef ddm_def
             pdef_.a = 1.0;
             plbound_.a = 0.01;
             pubound_.a = 7.5;
+            prior_.a = @(x) gampdf(x,A_shape,B_scale);
+            
             
             modelkey_var{ix} = 't';ix = ix+1;
             g_mea = 0.3;g_std = 0.075;
@@ -200,6 +280,8 @@ classdef ddm_def
             pdef_.t = 0.25;
             plbound_.t = 0.1;
             pubound_.t = 0.75;
+            prior_.t = @(x) gampdf(x,A_shape,B_scale);
+            
             
             modelkey_var{ix} = 'v';ix = ix+1;
             g_mea = 3;g_std = 1;
@@ -208,13 +290,17 @@ classdef ddm_def
             pdef_.v = 0.0;
             plbound_.v = -7.5;
             pubound_.v = 7.5;
+            prior_.v = @(x) gampdf(x,A_shape,B_scale);
             
             modelkey_var{ix} = 'b';ix = ix+1;
             g_sd = 2.5;
-            pran_.b = abs(normrnd(0,g_sd));
+            pd_hn = makedist('HalfNormal','mu',0,'sigma',g_sd);
+            pran_.b = pd_hn.random;
             pdef_.b = 0.0;
             plbound_.b = 0;
             pubound_.b = 20;
+            prior_.b = @(x) pdf(pd_hn,x);
+            
             
             modelkey_var{ix} = 'xb';ix = ix+1;
             g_mea = 0.1;g_std = 0.06;
@@ -223,6 +309,7 @@ classdef ddm_def
             pdef_.xb = 0.0;
             plbound_.xb = 0;
             pubound_.xb = [20];%could def be changed
+            prior_.xb = @(x) gampdf(x,A_shape,B_scale);
             
             modelkey_var{ix} = 'st';ix = ix+1;
             g_lo = 0;
@@ -230,13 +317,16 @@ classdef ddm_def
             pran_.st = unifrnd(g_lo,g_up);
             pdef_.st = 0.0;
             plbound_.st = 0;
-            pubound_.st = 0.5;                
+            pubound_.st = 0.5;
+            prior_.st = @(x) unifpdf(x,g_lo,g_up);
+            
             
             modelkey_var{ix} = 'sx';ix = ix+1;
             pran_.sx = 0;            %not implemented
             pdef_.sx = 0;
             plbound_.st = 0;
             pubound_.st = plbound_.a(end)/2;
+            prior_.st = @(x) unifpdf(x,0,pubound_.st);
             
             ix = ix;clear ix;
             for ix_modelkey_var = 1:length(modelkey_var)
@@ -255,9 +345,11 @@ classdef ddm_def
                 outputArg = plbound_;
             elseif strcmpi(deftype,'ubound')
                 outputArg = pubound_;
+            elseif strcmpi(deftype,'prior')
+                outputArg = prior_;
+            else error('bad deftype')
             end
         end
-        
         
     end
 end
@@ -298,7 +390,7 @@ for ix_p_config = 1:height(p_mat_unique)
     px = table2struct(p_mat_unique(ix_p_config,:));
     px_array = table2array(p_mat_unique(ix_p_config,:));
     
-    [pdf_cw,pdf_cr,t,cdf_cw,cdf_cr] = ddm_pdf(px,s.dt,s.T,s.ddx);
+    [pdf_cw,pdf_cr,~,cdf_cw,cdf_cr] = ddm_pdf(px,s.dt,s.T,s.ddx);
     p_cr = cdf_cr(end);
     p_cw = cdf_cw(end);
     
@@ -309,11 +401,11 @@ for ix_p_config = 1:height(p_mat_unique)
     case_nnan = not(isnan(data.rt));
     
     ix_cr = round(data.rt(case_right&case_config&case_nnan)/s.dt);
-    ix_cw = round(data.rt(case_wrong&case_config)/s.dt);
-    
+    ix_cw = round(data.rt(case_wrong&case_config&case_nnan)/s.dt);
+
     pRT_g_cr = pdf_cr(ix_cr)';
     pRT_g_cw = pdf_cw(ix_cw)';
-    
+
     p_RT_and_accuracy(case_right&case_config&case_nnan) = pRT_g_cr*p_cr;
     p_RT_and_accuracy(case_wrong&case_config&case_nnan) = pRT_g_cw*p_cw;
 end
@@ -327,7 +419,7 @@ if isnan(ll_app),ll_app=-inf;end
 k = length(s.fit_n)+1;%number of free params + 1 for noise
 n = length(p_RT_and_accuracy);
 %prob an issue here with thr fact that some trials are kicked out..
-bic_app = log(n)*k-2*ll_app;                
+bic_app = log(n)*k-2*ll_app;
 aic_app = 2*k-2*ll_app;
 aicc_app = aic_app + (2*(k^2) + 2*k)/(n-k-1);
 nll_app = -ll_app;
@@ -355,10 +447,10 @@ if p.sx == 0
     z0 = zeros(length(xz),1);
     z0(zeroStateIx,1) = 1;
 else
-                    error('not sure if should be gaussian or uniform');
-%     	z0 = normpdf(xz,xz(zeroStateIx),p.sx);
-                    z0 = unifpdf(xz,xz(zeroStateIx)-p.s_x0,xz(zeroStateIx)+p.sx);
-                    z0 = z0/sum(z0);
+    error('not sure if should be gaussian or uniform');
+    %     	z0 = normpdf(xz,xz(zeroStateIx),p.sx);
+    z0 = unifpdf(xz,xz(zeroStateIx)-p.s_x0,xz(zeroStateIx)+p.sx);
+    z0 = z0/sum(z0);
 end
 %
 sig = p.s*sqrt(dt);
@@ -439,7 +531,7 @@ t_math = linspace_t(1:end-1)+dt/2;
 %%
 maxIterations = floor(T/dt);
 if length(linspace_t)~=maxIterations,error('Messed up time code');end
-%% 
+%%
 x0 = (-(2*p.c-1)*p.xb);
 x0_trial = 2*(rand(N_its,1)-0.5)*(p.sx) + x0;%n.b. this one is uniform.
 x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
@@ -449,9 +541,9 @@ x = nan(N_its,maxIterations);
 x(:,1) = x0_trial;
 
 for ix_t = 2:maxIterations
-        %need to check this before it gets used:
-        error('Mistake in specification of x_drift (wrong dimensions)');
-        x(:,ix_t) = x(:,ix_t-1) + x_noise(:,ix_t) + x_drift(:,ix_t);
+    %need to check this before it gets used:
+    error('Mistake in specification of x_drift (wrong dimensions)');
+    x(:,ix_t) = x(:,ix_t-1) + x_noise(:,ix_t) + x_drift(:,ix_t);
 end
 %%
 x_threshold = +a;

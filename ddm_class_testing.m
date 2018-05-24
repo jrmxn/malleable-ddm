@@ -16,7 +16,7 @@ id_fit(mk.t) = 1;
 id_fit(mk.v) = 1;
 id_fit = sr.debi_model(id_fit,'bi','de');
 
-sr.subject = 'QQYAK';
+sr.subject = 1;
 sr.path_data = 'testing.csv';
 
 sr = sr.ddm_init(id_model,id_fit);
@@ -32,4 +32,4 @@ sr.ddm_save;
 
 px = sr.fit(end).p;px.c = 1;
 %make 100 draws from the pdf
-sr.ddm_draw(px,100);
+sr.ddm_data_draw(px,100);
