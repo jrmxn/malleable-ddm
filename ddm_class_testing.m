@@ -16,7 +16,7 @@ id_fit(mk.t) = 1;
 id_fit(mk.v) = 1;
 id_fit = sr.debi_model(id_fit,'bi','de');
 
-sr.subject = 'PRPAE';
+sr.subject = 'QQYAK';
 sr.path_data = 'testing.csv';
 
 sr = sr.ddm_init(id_model,id_fit);
