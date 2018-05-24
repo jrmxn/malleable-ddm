@@ -49,11 +49,11 @@ sr = sr.ddm_init(id_model,id_fit);
 sr = sr.ddm_fit;
 sr.ddm_save;
 %%
-figure(2);
-[C,lags,ESS]=eacorr(sr.mcmc.models);
-plot(lags,C,'.-',lags([1 end]),[0 0],'k');
-grid on
-xlabel('lags')
-ylabel('autocorrelation');
-text(lags(end),0,sprintf('Effective Sample Size (ESS): %.0f_ ',ceil(mean(ESS))),'verticalalignment','bottom','horizontalalignment','right')
-title('Markov Chain Auto Correlation')
+% figure(2);
+% [C,lags,ESS]=eacorr(sr.mcmc.models);
+% plot(lags,C,'.-',lags([1 end]),[0 0],'k');
+% grid on
+% xlabel('lags')
+% ylabel('autocorrelation');
+% text(lags(end),0,sprintf('Effective Sample Size (ESS): %.0f_ ',ceil(mean(ESS))),'verticalalignment','bottom','horizontalalignment','right')
+% title('Markov Chain Auto Correlation')

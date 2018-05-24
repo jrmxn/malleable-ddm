@@ -7,13 +7,13 @@ classdef ddm_def
         modelclass = '';
         id_model = -1+2^4;
         id_fit = 1;
-        s = [];
-        modelKey = [];
-        data = [];
-        opt = [];
-        fit = [];
         path_data = '';
         fit_ix = 0;
+        modelKey = [];
+        data = [];
+        s = [];
+        opt = [];
+        fit = [];
         info = [];
         mcmc = [];
     end
@@ -28,7 +28,12 @@ classdef ddm_def
         end
         
         function obj = ddm_init(obj, id_model,id_fit)
-            
+            %Set the simulation settings (s), and the optimisation settings
+            %(opt). id_model and if_fit (which are decimals,
+            % which correspond to binary vectors referencing the
+            % parameters) get set.
+            % additionally id_fit gets translated into xl which holds the
+            % fit parameters as strings in a cell.
             obj.id_model = id_model;
             obj.id_fit = id_fit;
             
@@ -362,7 +367,8 @@ classdef ddm_def
                 outputArg = pubound_;
             elseif strcmpi(deftype,'prior')
                 outputArg = prior_;
-            else error('bad deftype')
+            else
+                error('bad deftype')
             end
         end
         
