@@ -189,34 +189,7 @@ classdef ddm_def
             end
         end
         
-        function outputArg = getmodelKey(obj, forwards)
-            ix = 1;
-            modelkey_var{ix} = 's';ix = ix+1;
-            modelkey_var{ix} = 'a';ix = ix+1;
-            modelkey_var{ix} = 't';ix = ix+1;
-            modelkey_var{ix} = 'v';ix = ix+1;
-            modelkey_var{ix} = 'b';ix = ix+1;
-            modelkey_var{ix} = 'xb';ix = ix+1;
-            modelkey_var{ix} = 'st';ix = ix+1;
-            modelkey_var{ix} = 'sx';ix = ix+1;
-            
-            
-            for ix_modelkey_var = 1:length(modelkey_var)
-                modelkey_rev.(modelkey_var{ix_modelkey_var}) = ix_modelkey_var;
-            end
-            
-            if forwards
-                outputArg = modelkey_var;
-            else
-                outputArg = modelkey_rev;
-            end
-        end
-        
-        function outputArg = method1(obj,inputArg)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-            outputArg = obj.Property1 + inputArg;
-        end
+
     end
 end
 
