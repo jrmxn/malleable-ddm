@@ -204,12 +204,12 @@ classdef ddm_def
             if not(isempty(obj.subject))
                 data_ = readtable(obj.path_data);
                 if isnumeric(data_.subject)
-                    case_subject = data_.subject == obj.subject;
-                else
-                    case_subject = strcmpi(data_.subject,obj.subject);
+                    %if in csv subject id is numeric, then subject should
+                    %be specified as 'sub01', 'sub02', etc.
+                    data_.subject = arrayfun(@(x) sprintf('sub%02d',x),data_.subject,'UniformOutput',false);
                 end
-                
-                
+                    case_subject = strcmpi(data_.subject,obj.subject);
+
                 if iscell(data_.choice)
                     error('Maybe you have a string in choice field?');
                 end

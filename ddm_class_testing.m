@@ -16,11 +16,11 @@ id_fit(mk.t) = 1;
 id_fit(mk.v) = 1;
 id_fit = sr.debi_model(id_fit,'bi','de');
 
-sr.subject = 1;
+sr.subject = 'sub01';
 sr.path_data = 'testing.csv';
 
 sr = sr.ddm_init(id_model,id_fit);
-sr.opt.MaxIter = 20;
+sr.opt.MaxIter = 200;
 %If this isn't run manually it runs automatically.
 %But it allows modifications to be made for new branches of model fits - 
 %E.g. initialise a new model, but then get the initial p from somewhere
