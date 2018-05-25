@@ -51,10 +51,6 @@ How to cite
 ===========
 
 
-Testimonials
-============
-
-
 Getting started
 ===============
 
