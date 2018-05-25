@@ -365,7 +365,7 @@ classdef ddm_def < handle
             pdef_.sx = 0;
             plbound_.sx = 0;
             pubound_.sx = pubound_.a(end)/2;
-            prior_.sx = @(x) unifpdf(x,0,pubound_.st);
+            prior_.sx = @(x) unifpdf(x,0,pubound_.sx);
                         
             ix = ix;clear ix;
             for ix_modelkey_var = 1:length(modelkey_var)
