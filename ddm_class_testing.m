@@ -1,5 +1,5 @@
 % clear;
-% sr = ddm_def('');
+% sr = ddm_def;
 % mk = sr.ddm_def_instance('keyr');
 % %%
 % id_model = sr.debi_model(0,'de','bi');
