@@ -51,7 +51,7 @@ f_savepath = sr.ddm_save;
 clearvars -except f_savepath;
 sr = load(f_savepath);sr = sr.obj;
 tic;
-sr.ddm_mcmc('mccount',50e3);
+sr.ddm_mcmc('mccount',100e3);
 toc;
 sr.ddm_save;
 %%

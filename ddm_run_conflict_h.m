@@ -17,7 +17,7 @@ id_search(mk.t) = 1;
 id_search(mk.v) = 1;
 id_search(mk.st) = 1;
 id_search = sr.debi_model(id_search,'bi','de');
-
+/home/mcintosh
 sr.subject = 'sub01';
 sr.path_data = 'testing.csv';
 
