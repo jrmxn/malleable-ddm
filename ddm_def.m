@@ -9,6 +9,7 @@ classdef ddm_def < handle
         id_search = 1;
         path_data = '';
         fit_ix = 0;
+        extra_string = '';
         modelKey = [];
         data = [];
         s = [];
@@ -225,7 +226,7 @@ classdef ddm_def < handle
             loglike = @(m) -obj.opt.h_cost(m,p,obj.data,obj.s);
             logprior = @(m) prior_likelihood(m, xl, h_priors);
             logPfuns = {@(m)logprior(m) @(m)loglike(m)};
-            
+%             logPfuns{1}(minit(:,1))+logPfuns{2}(minit(:,1))
             fprintf('Starting mcmc...\n');
             [models,logp]=gwmcmc(minit,logPfuns,opt_.mccount,'Parallel',opt_.doParallel,'BurnIn',opt_.BurnIn,'ThinChain',opt_.ThinChain);
             obj.mcmc(obj.fit_ix).models = models;
@@ -249,16 +250,20 @@ classdef ddm_def < handle
                 end
                 data_ = data_(case_subject,:);
                 if not(height(data_)>0),error('Bad subject spec?');end
+                
+                
+                
                 obj.data = data_;
             end
         end
         
         function ddm_save(obj,f_path)
             if not(exist('f_path','var')==1),f_path = '';end
-            f_name = sprintf('%s_%s_%s.mat',...
+            f_name = sprintf('%s_%s_%s%s.mat',...
                 obj.subject,...
                 obj.debi_model(obj.id_model,'de','st'),...
-                obj.debi_model(obj.id_search,'de','st'));
+                obj.debi_model(obj.id_search,'de','st'),...
+                obj.extra_string);
             
             save(fullfile(f_path,f_name),'obj');
         end
@@ -359,7 +364,7 @@ classdef ddm_def < handle
             pran_.sx = 0;            %not implemented
             pdef_.sx = 0;
             plbound_.st = 0;
-            pubound_.st = plbound_.a(end)/2;
+            pubound_.st = pubound_.a(end)/2;
             prior_.st = @(x) unifpdf(x,0,pubound_.st);
             
             ix = ix;clear ix;

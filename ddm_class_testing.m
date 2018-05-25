@@ -49,9 +49,9 @@ sr.ddm_fit;
 sr.ddm_save;
 %%
 clear;
-sr = load('sub01_x4128768x_x2031616x.mat');sr = sr.obj;
+sr = load('sub01_x4161536x_x2064384x.mat');sr = sr.obj;
 tic;
-sr.ddm_mcmc('mccount',25000);
+sr.ddm_mcmc('mccount',2500);
 toc;
 sr.ddm_save;
 %%
