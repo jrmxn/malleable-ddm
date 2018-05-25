@@ -20,9 +20,9 @@ classdef ddm_def < handle
     end
     
     methods
-        function obj = ddm_def(modelclass)
+        function obj = ddm_def
             %light initialisation so functions can be used easily
-            obj.modelclass = modelclass;
+            obj.modelclass = 'basic';
             obj.modelKey = ddm_def_instance(obj, 'keyf');
             obj.info.version = sprintf('%0.3f',0);
             obj.info.date = datetime;
@@ -363,10 +363,10 @@ classdef ddm_def < handle
             modelkey_var{ix} = 'sx';ix = ix+1;
             pran_.sx = 0;            %not implemented
             pdef_.sx = 0;
-            plbound_.st = 0;
-            pubound_.st = pubound_.a(end)/2;
-            prior_.st = @(x) unifpdf(x,0,pubound_.st);
-            
+            plbound_.sx = 0;
+            pubound_.sx = pubound_.a(end)/2;
+            prior_.sx = @(x) unifpdf(x,0,pubound_.st);
+                        
             ix = ix;clear ix;
             for ix_modelkey_var = 1:length(modelkey_var)
                 modelkey_rev.(modelkey_var{ix_modelkey_var}) = ix_modelkey_var;
