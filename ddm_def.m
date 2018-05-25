@@ -295,7 +295,7 @@ classdef ddm_def < handle
         
         function outputArg = ddm_get_instance(obj, deftype)
             [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ...
-                ddm_get_instance(obj);
+                obj.ddm_def_instance;
             
             for ix_modelkey_var = 1:length(modelkey_var)
                 modelkey_rev.(modelkey_var{ix_modelkey_var}) = ix_modelkey_var;
