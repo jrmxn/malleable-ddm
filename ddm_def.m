@@ -23,7 +23,7 @@ classdef ddm_def < handle
         function obj = ddm_def
             %light initialisation so functions can be used easily
             obj.modelclass = 'basic';
-            obj.modelKey = ddm_def_instance(obj, 'keyf');
+            obj.modelKey = ddm_get_instance(obj, 'keyf');
             obj.info.version = sprintf('%0.3f',0);
             obj.info.date = datetime;
         end
@@ -85,7 +85,7 @@ classdef ddm_def < handle
             
             if fit_ix_==1
                 %p is defined from a full set of defaults/random init
-                init_p_full = obj.ddm_def_instance(['init_' obj.s.inittype]);
+                init_p_full = obj.ddm_get_instance(['init_' obj.s.inittype]);
                 % and now we need to reduce it to match the specific model
                 % configuration we are testing.
                 id_model_index = find(obj.debi_model(obj.id_model,'de','bi'));
@@ -107,8 +107,8 @@ classdef ddm_def < handle
                 fit_init.p = obj.fit(fit_ix_-1).p;
             end
             fit_init.nll = obj.opt.h_cost([],fit_init.p);
-            fit_init.p_lb = obj.ddm_def_instance('lbound');
-            fit_init.p_ub = obj.ddm_def_instance('ubound');
+            fit_init.p_lb = obj.ddm_get_instance('lbound');
+            fit_init.p_ub = obj.ddm_get_instance('ubound');
             
             obj.fit(fit_ix_).init = fit_init;
         end
@@ -201,7 +201,7 @@ classdef ddm_def < handle
                 n_init_rand = 5e3;
                 x_rand = nan(n_init_rand,obj.s.fit_n);
                 for ix_draw_prior = 1:n_init_rand
-                    x_rand(ix_draw_prior,:) = obj.p2x(xl,ddm_def_instance(obj, 'init_random'));
+                    x_rand(ix_draw_prior,:) = obj.p2x(xl,ddm_get_instance(obj, 'init_random'));
                 end
                 %get distance from ps optimum
                 xd = x_rand-x;
@@ -218,7 +218,7 @@ classdef ddm_def < handle
             %use most uptodata p value
             p = obj.fit(obj.fit_ix).p;
             xl = obj.s.xl;
-            h_priors = ddm_def_instance(obj, 'prior');
+            h_priors = ddm_get_instance(obj, 'prior');
             x = obj.p2x(xl,p);
             
             minit = ddm_mcmc_minit(obj,x,xl,opt_.n_s);
@@ -293,84 +293,10 @@ classdef ddm_def < handle
         end
         
         
-        
-        
-        function outputArg = ddm_def_instance(obj, deftype)
-            ix = 1;
+        function outputArg = ddm_get_instance(obj, deftype)
+            [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ...
+                ddm_get_instance(obj);
             
-            modelkey_var{ix} = 's';ix = ix+1;
-            pran_.s = 1;
-            pdef_.s = 1;
-            plbound_.s = 1;
-            pubound_.s = 1;
-            prior_.s = @(x) 1;
-            
-            modelkey_var{ix} = 'a';ix = ix+1;
-            g_mea = 0.6;g_std = 0.15;
-            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
-            pran_.a = gamrnd(A_shape,B_scale,[1,1]);
-            pdef_.a = 1.0;
-            plbound_.a = 0.01;
-            pubound_.a = 7.5;
-            prior_.a = @(x) gampdf(x,A_shape,B_scale);
-            
-            
-            modelkey_var{ix} = 't';ix = ix+1;
-            g_mea = 0.3;g_std = 0.075;
-            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
-            pran_.t = gamrnd(A_shape,B_scale,[1,1]);
-            pdef_.t = 0.25;
-            plbound_.t = 0.1;
-            pubound_.t = 0.75;
-            prior_.t = @(x) gampdf(x,A_shape,B_scale);
-            
-            
-            modelkey_var{ix} = 'v';ix = ix+1;
-            g_mea = 3;g_std = 1;
-            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
-            pran_.v = gamrnd(A_shape,B_scale,[1,1]);
-            pdef_.v = 0.0;
-            plbound_.v = -7.5;
-            pubound_.v = 7.5;
-            prior_.v = @(x) gampdf(x,A_shape,B_scale);
-            
-            modelkey_var{ix} = 'b';ix = ix+1;
-            g_sd = 5;
-            pd_hn = makedist('HalfNormal','mu',0,'sigma',g_sd);
-            pran_.b = pd_hn.random;
-            pdef_.b = 0.0;
-            plbound_.b = 0;
-            pubound_.b = 20;
-            prior_.b = @(x) pdf(pd_hn,x);
-            
-            
-            modelkey_var{ix} = 'xb';ix = ix+1;
-            g_mea = 0.1;g_std = 0.06;
-            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
-            pran_.xb = gamrnd(A_shape,B_scale,[1,1]);
-            pdef_.xb = 0.0;
-            plbound_.xb = 0;
-            pubound_.xb = [20];%could def be changed
-            prior_.xb = @(x) gampdf(x,A_shape,B_scale);
-            
-            modelkey_var{ix} = 'st';ix = ix+1;
-            g_lo = 0;
-            g_up = 0.15;
-            pran_.st = unifrnd(g_lo,g_up);
-            pdef_.st = 0.0;
-            plbound_.st = 0;
-            pubound_.st = 0.5;
-            prior_.st = @(x) unifpdf(x,g_lo,g_up);
-            
-            
-            modelkey_var{ix} = 'sx';ix = ix+1;
-            pran_.sx = 0;            %not implemented
-            pdef_.sx = 0;
-            plbound_.sx = 0;
-            pubound_.sx = pubound_.a(end)/2;
-            prior_.sx = @(x) unifpdf(x,0,pubound_.sx);
-            
-            ix = ix;clear ix;
             for ix_modelkey_var = 1:length(modelkey_var)
                 modelkey_rev.(modelkey_var{ix_modelkey_var}) = ix_modelkey_var;
             end
@@ -392,6 +318,88 @@ classdef ddm_def < handle
             else
                 error('bad deftype')
             end
+        end
+        
+        function [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ddm_def_instance(obj)
+            ix = 1;
+            
+            p_ = 's';
+            modelkey_var{ix} = p_;ix = ix+1;
+            pran_.(p_) = 1;
+            pdef_.(p_) = 1;
+            plbound_.(p_) = 1;
+            pubound_.(p_) = 1;
+            prior_.(p_) = @(x) 1;
+            
+            p_ = 'a';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_mea = 0.6;g_std = 0.15;
+            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
+            pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
+            pdef_.(p_) = 1.0;
+            plbound_.(p_) = 0.01;
+            pubound_.(p_) = 7.5;
+            prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
+            
+            p_ = 't';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_mea = 0.3;g_std = 0.075;
+            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
+            pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
+            pdef_.(p_) = 0.25;
+            plbound_.(p_) = 0.1;
+            pubound_.(p_) = 0.75;
+            prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
+            
+            p_ = 'v';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_mea = 3;g_std = 1;
+            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
+            pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
+            pdef_.(p_) = 0.0;
+            plbound_.(p_) = -7.5;
+            pubound_.(p_) = 7.5;
+            prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
+            
+            p_ = 'b';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_sd = 5;
+            pd_hn = makedist('HalfNormal','mu',0,'sigma',g_sd);
+            pran_.(p_) = pd_hn.random;
+            pdef_.(p_) = 0.0;
+            plbound_.(p_) = 0;
+            pubound_.(p_) = 20;
+            prior_.(p_) = @(x) pdf(pd_hn,x);
+            
+            p_ = 'xb';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_mea = 0.1;g_std = 0.06;
+            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
+            pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
+            pdef_.(p_) = 0.0;
+            plbound_.(p_) = 0;
+            pubound_.(p_) = [10];%could def be changed
+            warning('xb prior is crazy');
+            prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
+            
+            p_ = 'st';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_lo = 0;
+            g_up = 0.15;
+            pran_.(p_) = unifrnd(g_lo,g_up);
+            pdef_.(p_) = 0.0;
+            plbound_.(p_) = 0;
+            pubound_.(p_) = 0.5;
+            prior_.(p_) = @(x) unifpdf(x,g_lo,g_up);
+            
+            p_ = 'sx';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            pran_.(p_) = 0;            %not implemented
+            pdef_.(p_) = 0;
+            plbound_.(p_) = 0;
+            pubound_.(p_) = pubound_.a(end)/2;%n.b. the hard reference to a!
+            prior_.(p_) = @(x) unifpdf(x,0,pubound_.(p_));
+            
         end
         
         
@@ -548,30 +556,6 @@ classdef ddm_def < handle
             pdf_dow = diff(cdf_dow)/dt;
         end
         
-        
-        function x = p2x(xl,p)
-            vec_xl = fieldnames(xl);
-            x = nan(1,length(vec_xl));
-            for ix_vec_xl = 1:length(vec_xl)
-                x_index = xl.(vec_xl{ix_vec_xl});
-                x_value = p.(vec_xl{ix_vec_xl});
-                x(x_index) = x_value;
-            end
-        end
-        
-        function p = px2p(xl,p,x)
-            vec_xl = fieldnames(xl);
-            for ix_vec_xl = 1:length(vec_xl)
-                x_index = xl.(vec_xl{ix_vec_xl});
-                x_value = x(x_index);
-                p.(vec_xl{ix_vec_xl}) = x_value;
-            end
-        end
-        
-        
-        
-        
-        
         function [pdf_dow,pdf_ups,t_math,cdf_dow,cdf_ups] = ddm_bru(p,dt,T,N_its)
             
             [vec_rt,vec_correct,x,td_tot] = ddm_bru_core(p,dt,T,N_its);
@@ -656,6 +640,25 @@ classdef ddm_def < handle
             beta_rate = (g_mea)/(g_std^2);
             A_shape = alpha_shape;
             B_scale = 1/beta_rate;
+        end
+        
+        function x = p2x(xl,p)
+            vec_xl = fieldnames(xl);
+            x = nan(1,length(vec_xl));
+            for ix_vec_xl = 1:length(vec_xl)
+                x_index = xl.(vec_xl{ix_vec_xl});
+                x_value = p.(vec_xl{ix_vec_xl});
+                x(x_index) = x_value;
+            end
+        end
+        
+        function p = px2p(xl,p,x)
+            vec_xl = fieldnames(xl);
+            for ix_vec_xl = 1:length(vec_xl)
+                x_index = xl.(vec_xl{ix_vec_xl});
+                x_value = x(x_index);
+                p.(vec_xl{ix_vec_xl}) = x_value;
+            end
         end
     end
 end
