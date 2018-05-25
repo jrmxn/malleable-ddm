@@ -1,4 +1,4 @@
-classdef ddm_def < handle
+classdef ddm_def < matlab.mixin.Copyable%instead of handle
     %DDM_DEF Summary of this class goes here
     %   Detailed explanation goes here
     
