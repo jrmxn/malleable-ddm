@@ -71,7 +71,7 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             pubound_.(p_) = 3;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
-            p_ = 'xbc';
+            p_ = 'xbhc';
             modelkey_var{ix} = (p_);ix = ix+1;
             g_sd = 0.5;
             pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
@@ -81,14 +81,14 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             pubound_.(p_) = 3;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
-            p_ = 'xbnc';
+            p_ = 'xbhnc';
             modelkey_var{ix} = (p_);ix = ix+1;
-            g_sd = 0.5;
+            g_sd = 0.5/3;
             pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
             plbound_.(p_) = 0;
-            pubound_.(p_) = 3;
+            pubound_.(p_) = 1;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
         end
@@ -100,7 +100,7 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             %
             
             % %n.b. a multiplication by p.th could stabilise
-            x0 = (-(2*p.c-1)*p.xb);
+            x0 = (-(2*p.c-1)*(p.xb+p.c_hist*p.xbhc + (1-p.c_hist)*p.xbhnc));
             %
             linspace_t = 0:dt:T-dt;
             t_math = linspace_t(1:end-1)+dt/2;
@@ -132,7 +132,7 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             pMat(:,1) = zn;
             %
             for ix_t = 2:N_t
-                xvm_expect = xvm_prev + p.v*(...
+                xvm_expect = xvm_prev + (p.v + p.c_hist*p.vhc + (1-p.c_hist)*p.vhnc)*(...
                     1+p.c*(p.b + p.c_hist*p.bhc + (1-p.c_hist)*p.bhnc)*t_math(ix_t-1)...
                     )*dt;
                 A = (1/sqrt(2*pi*(sig^2)))*exp(-((xvm_probe - xvm_expect).^2)/(2*(sig^2)));
