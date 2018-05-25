@@ -24,7 +24,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             %light initialisation so functions can be used easily
             obj.modelclass = '';
             obj.modelKey = ddm_get_instance(obj, 'keyf');
-            obj.info.version = sprintf('%0.3f',0);
+            obj.info.version = sprintf('0.0.1');
             obj.info.date = datetime;
         end
         
