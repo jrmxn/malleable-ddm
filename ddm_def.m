@@ -271,12 +271,7 @@ classdef ddm_def < handle
             save(f_savepath,'obj');
         end
         
-        function [t_ups,t_dow,p_ups,p_dow] = ddm_data_draw(obj,p,N)
-            
-            if not(isfield(p,'c'))
-                error('Currently code needs condition to be passed here');
-            end
-            
+        function [t_ups,t_dow,p_ups,p_dow] = ddm_data_draw(obj,p,N)           
             [~,~,t,cdf_dow,cdf_ups] = obj.ddm_pdf(p,obj.s.dt,obj.s.T,obj.s.ddx);
             [t_ups,t_dow,p_ups,p_dow] = obj.ddm_pdf2rt(cdf_ups,cdf_dow,t,N);
         end

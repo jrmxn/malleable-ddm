@@ -26,9 +26,6 @@ sr.ddm_init(id_model,id_search);
 sr.ddm_fit;
 sr.ddm_fit;
 f_savepath = sr.ddm_save;
-px = sr.fit(end).p;px.c = 1;
-%make 100 draws from the pdf
-sr.ddm_data_draw(px,100);
 %% Test to use previous model as start point
 clearvars -except f_savepath;
 sr = load(f_savepath);sr = sr.obj;
