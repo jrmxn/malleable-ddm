@@ -22,7 +22,7 @@ classdef ddm_def < handle
     methods
         function obj = ddm_def
             %light initialisation so functions can be used easily
-            obj.modelclass = 'basic';
+            obj.modelclass = '';
             obj.modelKey = ddm_get_instance(obj, 'keyf');
             obj.info.version = sprintf('%0.3f',0);
             obj.info.date = datetime;
@@ -258,7 +258,7 @@ classdef ddm_def < handle
             end
         end
         
-        function ddm_save(obj,f_path)
+        function f_savepath = ddm_save(obj,f_path)
             if not(exist('f_path','var')==1),f_path = '';end
             f_name = sprintf('%s_%s_%s_%s%s.mat',...
                 obj.subject,...
@@ -266,8 +266,8 @@ classdef ddm_def < handle
                 obj.debi_model(obj.id_search,'de','st'),...
                 obj.modelclass,...
                 obj.extra_string);
-            
-            save(fullfile(f_path,f_name),'obj');
+            f_savepath = fullfile(f_path,f_name);
+            save(f_savepath,'obj');
         end
         
         function [t_ups,t_dow,p_ups,p_dow] = ddm_data_draw(obj,p,N)
@@ -321,88 +321,10 @@ classdef ddm_def < handle
             end
         end
         
-        function [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ddm_def_instance(obj)
-            ix = 1;
-            
-            p_ = 's';
-            modelkey_var{ix} = p_;ix = ix+1;
-            pran_.(p_) = 1;
-            pdef_.(p_) = 1;
-            plbound_.(p_) = 1;
-            pubound_.(p_) = 1;
-            prior_.(p_) = @(x) 1;
-            
-            p_ = 'a';
-            modelkey_var{ix} = (p_);ix = ix+1;
-            g_mea = 0.6;g_std = 0.15;
-            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
-            pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
-            pdef_.(p_) = 1.0;
-            plbound_.(p_) = 0.01;
-            pubound_.(p_) = 7.5;
-            prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
-            
-            p_ = 't';
-            modelkey_var{ix} = (p_);ix = ix+1;
-            g_mea = 0.3;g_std = 0.075;
-            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
-            pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
-            pdef_.(p_) = 0.25;
-            plbound_.(p_) = 0.1;
-            pubound_.(p_) = 0.75;
-            prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
-            
-            p_ = 'v';
-            modelkey_var{ix} = (p_);ix = ix+1;
-            g_mea = 3;g_std = 1;
-            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
-            pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
-            pdef_.(p_) = 0.0;
-            plbound_.(p_) = -7.5;
-            pubound_.(p_) = 7.5;
-            prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
-            
-            p_ = 'b';
-            modelkey_var{ix} = (p_);ix = ix+1;
-            g_sd = 5;
-            pd_hn = makedist('HalfNormal','mu',0,'sigma',g_sd);
-            pran_.(p_) = pd_hn.random;
-            pdef_.(p_) = 0.0;
-            plbound_.(p_) = 0;
-            pubound_.(p_) = 20;
-            prior_.(p_) = @(x) pdf(pd_hn,x);
-            
-            p_ = 'xb';
-            modelkey_var{ix} = (p_);ix = ix+1;
-            g_mea = 0.1;g_std = 0.06;
-            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
-            pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
-            pdef_.(p_) = 0.0;
-            plbound_.(p_) = 0;
-            pubound_.(p_) = [10];%could def be changed
-            warning('xb prior is crazy');
-            prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
-            
-            p_ = 'st';
-            modelkey_var{ix} = (p_);ix = ix+1;
-            g_lo = 0;
-            g_up = 0.15;
-            pran_.(p_) = unifrnd(g_lo,g_up);
-            pdef_.(p_) = 0.0;
-            plbound_.(p_) = 0;
-            pubound_.(p_) = 0.5;
-            prior_.(p_) = @(x) unifpdf(x,g_lo,g_up);
-            
-            p_ = 'sx';
-            modelkey_var{ix} = (p_);ix = ix+1;
-            pran_.(p_) = 0;            %not implemented
-            pdef_.(p_) = 0;
-            plbound_.(p_) = 0;
-            pubound_.(p_) = pubound_.a(end)/2;%n.b. the hard reference to a!
-            prior_.(p_) = @(x) unifpdf(x,0,pubound_.(p_));
-            
-        end
         
+        function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
+%             p_mat.c = obj.data.stim_conflict;
+        end
         
         function [nll_app,aic_app,aicc_app,bic_app] = ddm_cost_pdf_nll(obj,x,p)
             if not(isempty(x))
@@ -412,7 +334,9 @@ classdef ddm_def < handle
             
             %while I like this, it takes 50ms
             p_mat = struct2table(repmat(p,height(obj.data),1));
-            p_mat.c = obj.data.stim_conflict;
+            
+            %Add trial-trial stimulus dependencies (e.g. coherence, conflict etc.)
+            p_mat = obj.ddm_cost_add_stim_dependencies(p_mat);
             
             p_mat_unique = unique(p_mat);
             p_mat_array = table2array(p_mat);
@@ -458,14 +382,75 @@ classdef ddm_def < handle
         
     end
     
-    
+    methods (Access = protected)
+        function [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ddm_def_instance(obj)
+            ix = 1;
+            
+            p_ = 's';
+            modelkey_var{ix} = p_;ix = ix+1;
+            pran_.(p_) = 1;
+            pdef_.(p_) = 1;
+            plbound_.(p_) = 1;
+            pubound_.(p_) = 1;
+            prior_.(p_) = @(x) 1;
+            
+            p_ = 'a';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_mea = 0.6;g_std = 0.15;
+            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
+            pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
+            pdef_.(p_) = 1.0;
+            plbound_.(p_) = 0.01;
+            pubound_.(p_) = 7.5;
+            prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
+            
+            p_ = 't';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_mea = 0.3;g_std = 0.075;
+            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
+            pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
+            pdef_.(p_) = 0.25;
+            plbound_.(p_) = 0.1;
+            pubound_.(p_) = 0.75;
+            prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
+            
+            p_ = 'v';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_mea = 3;g_std = 1;
+            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
+            pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
+            pdef_.(p_) = 0.0;
+            plbound_.(p_) = -7.5;
+            pubound_.(p_) = 7.5;
+            prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
+            
+            p_ = 'st';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_lo = 0;
+            g_up = 0.15;
+            pran_.(p_) = unifrnd(g_lo,g_up);
+            pdef_.(p_) = 0.0;
+            plbound_.(p_) = 0;
+            pubound_.(p_) = 0.5;
+            prior_.(p_) = @(x) unifpdf(x,g_lo,g_up);
+            
+            p_ = 'sx';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            pran_.(p_) = 0;            %not implemented
+            pdef_.(p_) = 0;
+            plbound_.(p_) = 0;
+            pubound_.(p_) = pubound_.a/4;%n.b. the hard reference to a!
+            prior_.(p_) = @(x) unifpdf(x,0,pubound_.(p_));
+            
+        end
+    end
     methods (Static)
         
         function  [pdf_dow,pdf_ups,t_math,cdf_dow,cdf_ups] = ddm_pdf(p,dt,T,ddx)
             %
             
             % %n.b. a multiplication by p.th could stabilise
-            x0 = (-(2*p.c-1)*p.xb);
+            x0 = 0;
             %
             linspace_t = 0:dt:T-dt;
             t_math = linspace_t(1:end-1)+dt/2;
@@ -497,9 +482,7 @@ classdef ddm_def < handle
             pMat(:,1) = zn;
             %
             for ix_t = 2:N_t
-                xvm_expect = xvm_prev + p.v*(...
-                    1+p.c*(p.b)*t_math(ix_t-1)...
-                    )*dt;
+                xvm_expect = xvm_prev + p.v*dt;
                 A = (1/sqrt(2*pi*(sig^2)))*exp(-((xvm_probe - xvm_expect).^2)/(2*(sig^2)));
                 An = A./repmat(sum(A,1),length(xz),1);
                 An(isnan(An))=0;
@@ -572,10 +555,10 @@ classdef ddm_def < handle
             maxIterations = floor(T/dt);
             if length(linspace_t)~=maxIterations,error('Messed up time code');end
             %%
-            x0 = (-(2*p.c-1)*p.xb);
+            x0 = 0;
             x0_trial = 2*(rand(N_its,1)-0.5)*(p.sx) + x0;%n.b. this one is uniform.
             x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
-            x_drift = repmat(p.v*(1+p.c*p.b*t_math)*dt,1,maxIterations);
+            x_drift = repmat(p.v*dt,1,maxIterations);
             %%
             x = nan(N_its,maxIterations);
             x(:,1) = x0_trial;
@@ -662,6 +645,8 @@ classdef ddm_def < handle
             end
         end
     end
+    
+    
 end
 
 
