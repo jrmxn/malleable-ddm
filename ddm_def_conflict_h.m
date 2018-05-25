@@ -1,4 +1,4 @@
-classdef ddm_def_conflict_h < ddm_def
+classdef ddm_def_conflict_h < ddm_def_conflict
     %DDM_DEF Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -18,7 +18,7 @@ classdef ddm_def_conflict_h < ddm_def
         end
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
-            p_mat.c = obj.data.stim_conflict;
+            p_mat = ddm_cost_add_stim_dependencies@ddm_def_conflict(obj,p_mat);
             p_mat.c_hist = obj.data.stim_conflict_hist;
         end
         
@@ -28,7 +28,7 @@ classdef ddm_def_conflict_h < ddm_def
         function [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ddm_def_instance(obj)
             
             %use the base method first (rather than redefining the whole thing)
-            [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ddm_def_instance@ddm_def(obj);
+            [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ddm_def_instance@ddm_def_conflict(obj);
             ix = length(modelkey_var)+1;
             
             p_ = 'bhc';
