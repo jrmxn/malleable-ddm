@@ -38,6 +38,9 @@ classdef ddm_def < handle
             obj.id_model = id_model;
             obj.id_search = id_search;
             
+            if not(isnumeric(id_model)&(numel(id_model)==1)),error('Bad id_model');end
+            if not(isnumeric(id_search)&(numel(id_search)==1)),error('Bad id_model');end
+            
             obj.s.fit_n = sum(obj.debi_model(obj.id_search,'de','bi'));
             obj.s.minAlgo = 'nll';
             obj.s.reinit = false;
