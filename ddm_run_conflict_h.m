@@ -82,8 +82,8 @@ for ix_sub = 1:21
     id_model(mk.vhnc) = 1;
     id_model = sr_vh.debi_model(id_model,'bi','de');
     id_search = sr_vh.debi_model(sr_vh.id_search,'de','bi');
-    id_search(mk.bhc) = 1;
-    id_search(mk.bhnc) = 1;
+    id_search(mk.vhc) = 1;
+    id_search(mk.vhnc) = 1;
     id_search = sr_vh.debi_model(id_search,'bi','de');
     %re-initiate the model
     sr_vh.ddm_init(id_model,id_search);
@@ -102,8 +102,8 @@ for ix_sub = 1:21
     id_model(mk.xbhnc) = 1;
     id_model = sr_xbh.debi_model(id_model,'bi','de');
     id_search = sr_xbh.debi_model(sr_xbh.id_search,'de','bi');
-    id_search(mk.bhc) = 1;
-    id_search(mk.bhnc) = 1;
+    id_search(mk.xbhc) = 1;
+    id_search(mk.xbhnc) = 1;
     id_search = sr_xbh.debi_model(id_search,'bi','de');
     %re-initiate the model
     sr_xbh.ddm_init(id_model,id_search);
