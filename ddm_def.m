@@ -340,6 +340,14 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             p_mat_unique = unique(p_mat);
             p_mat_array = table2array(p_mat);
             
+            case_nan = isnan(obj.data.rt)|isnan(obj.data.choice);
+            case_right = obj.data.choice;
+            %this is ugly - setting nan to zero so that I can use them as
+            %logicals.case_nnan is used to exclude them later though so ok.
+            case_right(case_nan) = 0;
+            case_right = logical(case_right);
+            case_wrong = not(case_right);
+                
             for ix_p_config = 1:height(p_mat_unique)
                 px = table2struct(p_mat_unique(ix_p_config,:));
                 px_array = table2array(p_mat_unique(ix_p_config,:));
@@ -349,19 +357,18 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 p_cw = cdf_cw(end);
                 
                 %accuracy coding at the moment... should make this flexible
-                case_right = logical(obj.data.choice);
-                case_wrong = not(case_right);
+
                 case_config = all(p_mat_array==px_array,2);
-                case_nnan = not(isnan(obj.data.rt));
                 
-                ix_cr = round(obj.data.rt(case_right&case_config&case_nnan)/obj.s.dt);
-                ix_cw = round(obj.data.rt(case_wrong&case_config&case_nnan)/obj.s.dt);
+                
+                ix_cr = round(obj.data.rt(case_right&case_config&not(case_nan))/obj.s.dt);
+                ix_cw = round(obj.data.rt(case_wrong&case_config&not(case_nan))/obj.s.dt);
                 
                 pRT_g_cr = pdf_cr(ix_cr)';
                 pRT_g_cw = pdf_cw(ix_cw)';
                 
-                p_RT_and_accuracy(case_right&case_config&case_nnan) = pRT_g_cr*p_cr;
-                p_RT_and_accuracy(case_wrong&case_config&case_nnan) = pRT_g_cw*p_cw;
+                p_RT_and_accuracy(case_right&case_config&not(case_nan)) = pRT_g_cr*p_cr;
+                p_RT_and_accuracy(case_wrong&case_config&not(case_nan)) = pRT_g_cw*p_cw;
             end
             
             p_RT_and_accuracy(isnan(p_RT_and_accuracy)) = [];
