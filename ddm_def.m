@@ -274,7 +274,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             save(f_savepath,'obj');
         end
         
-        function [t_ups,t_dow,p_ups,p_dow] = ddm_data_draw(obj,p,N)           
+        function [t_ups,t_dow,p_ups,p_dow] = ddm_data_draw(obj,p,N)
             [~,~,t,cdf_dow,cdf_ups] = obj.ddm_pdf(p,obj.s.dt,obj.s.T,obj.s.ddx);
             [t_ups,t_dow,p_ups,p_dow] = obj.ddm_pdf2rt(cdf_ups,cdf_dow,t,N);
         end
@@ -322,7 +322,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
-%             p_mat.c = obj.data.stim_conflict;
+            %             p_mat.c = obj.data.stim_conflict;
         end
         
         function [nll_app,aic_app,aicc_app,bic_app] = ddm_cost_pdf_nll(obj,x,p)
@@ -347,7 +347,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             case_right(case_nan) = 0;
             case_right = logical(case_right);
             case_wrong = not(case_right);
-                
+            
             for ix_p_config = 1:height(p_mat_unique)
                 px = table2struct(p_mat_unique(ix_p_config,:));
                 px_array = table2array(p_mat_unique(ix_p_config,:));
@@ -357,7 +357,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 p_cw = cdf_cw(end);
                 
                 %accuracy coding at the moment... should make this flexible
-
+                
                 case_config = all(p_mat_array==px_array,2);
                 
                 
@@ -452,14 +452,78 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
     end
     methods (Static)
         
-        function  [pdf_dow,pdf_ups,t_math,cdf_dow,cdf_ups] = ddm_pdf(p,dt,T,ddx)
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_nv(p,dt,T)
+            linspace_t = 0:dt:T-dt;
+            rt = linspace_t(1:end-1)+dt/2;
+            warning('need to think about if this is the right covnersion');
+            z = p.x0 + p.a;
+            a = 2*p.a;
+            v = p.v;
+            
+            err = 1e-3;%not sure what this should actually be
+            tt = rt/(a^2);
+            w = z/a;
+            p = arrayfun(@(tt) ftt_01w(tt,w,err),tt);
+            
+            p = p.*exp(-v*a*w - (v^2)*rt/2)/(a^2);
+            p_ups = (exp(-2*a*z*v) - 1) / (exp(-2*a*v) - 1);
+            %not sure how this is dealing with error trials
+            
+            pdf_ups = p*p_ups;
+            pdf_dow = (1-p)*p_ups;%think this is gennerally wrong...
+            cdf_ups = cumtrapz(rt,pdf_ups);
+            cdf_dow = cumtrapz(rt,pdf_dow);
+            [cdf_ups,cdf_dow] = cdf_t_st(cdf_ups,cdf_dow,rt,t,st,dt);
+            
+            pdf_ups = diff(cdf_ups)/dt;
+            pdf_dow = diff(cdf_dow)/dt;
+            %does not currently deal with sv,, sz
+            if not(p.sx==0),error('not dealing with this');end
+            if not(p.sv==0),error('not dealing with this');end
+        end
+        function p = ftt_01w(tt,w,err)
+            if (pi*tt*err)<1 % if error threshold is set low enough
+                kl=sqrt(-2*log(pi*tt*err)/(pi^2*tt)); % bound
+                kl=max(kl,1/(pi*sqrt(tt))); % ensure boundary conditions met
+            else % if error threshold set too high
+                kl=1/(pi*sqrt(tt)); % set to boundary condition
+            end
+            % calculate number of terms needed for small t
+            if (2*sqrt(2*pi*tt)*err)<1 % if error threshold is set low enough
+                ks=2+sqrt(-2*tt.*log(2*sqrt(2*pi*tt)*err)); % bound
+                ks=max(ks,sqrt(tt)+1); % ensure boundary conditions are met
+            else % if error threshold was set too high
+                ks=2; % minimal kappa for that case
+            end
+            
+            % compute f(tt|0,1,w)
+            p=0; %initialize density
+            if ks<kl % if small t is better (i.e., lambda<0)
+                K=ceil(ks); % round to smallest integer meeting error
+                vec_k = -floor((K-1)/2):ceil((K-1)/2);
+                for k = vec_k
+                    p=p+(w+2*k)*exp(-((w+2*k)^2)/2/tt); % increment sum
+                end
+                p=p/sqrt(2*pi*(tt^3)); % add con_stant term
+                
+            else % if large t is better...
+                K= ceil(kl); % round to smallest integer meeting error
+                
+                for k=1:K
+                    p=p+k*exp(-((k^2))*(pi^2)*tt/2)*sin(k*pi*w); % increment sum
+                end
+                p=p*pi; % add con_stant term
+            end
+        end
+        
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf(p,dt,T,ddx)
             %
             
             % %n.b. a multiplication by p.th could stabilise
             x0 = 0;
             %
             linspace_t = 0:dt:T-dt;
-            t_math = linspace_t(1:end-1)+dt/2;
+            rt = linspace_t(1:end-1)+dt/2;
             %
             xmax = 1.25*p.a+0.2*p.s + p.s;
             xmin = -xmax;
@@ -507,36 +571,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             cdf_ups = sum(pMat(xz>p.a,:));
             cdf_dow = sum(pMat(xz<-p.a,:));
             %
-            td0_vec = find((t_math>(p.t)-p.st)&(t_math<(p.t)+p.st));
-            if length(td0_vec)<=1
-                ix_t0_shift = round((p.t)/dt);
-                cdf_ups = circshift(cdf_ups,ix_t0_shift);
-                cdf_ups(1:ix_t0_shift) = 0;
-                cdf_dow = circshift(cdf_dow,ix_t0_shift);
-                cdf_dow(1:ix_t0_shift) = 0;
-            else
-                N_vec_c_td = length(td0_vec);
-                cdf_ups_mats = repmat(cdf_ups,N_vec_c_td,1)/N_vec_c_td;
-                cdf_dow_mats = repmat(cdf_dow,N_vec_c_td,1)/N_vec_c_td;
-                
-                for ix_td0_vec = 1:length(td0_vec)
-                    ix_t0_shift = td0_vec(ix_td0_vec);
-                    cdf_ups_mats(ix_td0_vec,:) = circshift(cdf_ups_mats(ix_td0_vec,:),ix_t0_shift);
-                    cdf_ups_mats(ix_td0_vec,1:ix_t0_shift) = 0;
-                    cdf_dow_mats(ix_td0_vec,:) = circshift(cdf_dow_mats(ix_td0_vec,:),ix_t0_shift);
-                    cdf_dow_mats(ix_td0_vec,1:ix_t0_shift) = 0;
-                end
-                cdf_ups = sum(cdf_ups_mats,1);
-                cdf_dow = sum(cdf_dow_mats,1);
-                
-            end
-            %
-            %             if p.lapser~=0
-            %                 lapser_slope = linspace_t*p.lapser;
-            %                 cdf_ups = cdf_ups + lapser_slope;
-            %                 cdf_dow = cdf_dow + lapser_slope;
-            %             end
-            %
+            [cdf_ups,cdf_dow] = cdf_t_st(cdf_ups,cdf_dow,rt,t,st,dt);
+            
             cdf_ups_end = cdf_ups(end);
             cdf_dow_end = cdf_dow(end);
             cdf_ups = cdf_ups/(cdf_ups_end+cdf_dow_end);
@@ -655,6 +691,31 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
     
 end
 
+function [cdf_ups,cdf_dow] = cdf_t_st(cdf_ups,cdf_dow,rt,t,st,dt)
+td0_vec = find((rt>(t)-st)&(rt<(t)+st));
+if length(td0_vec)<=1
+    ix_t0_shift = round((t)/dt);
+    cdf_ups = circshift(cdf_ups,ix_t0_shift);
+    cdf_ups(1:ix_t0_shift) = 0;
+    cdf_dow = circshift(cdf_dow,ix_t0_shift);
+    cdf_dow(1:ix_t0_shift) = 0;
+else
+    N_vec_c_td = length(td0_vec);
+    cdf_ups_mats = repmat(cdf_ups,N_vec_c_td,1)/N_vec_c_td;
+    cdf_dow_mats = repmat(cdf_dow,N_vec_c_td,1)/N_vec_c_td;
+    
+    for ix_td0_vec = 1:length(td0_vec)
+        ix_t0_shift = td0_vec(ix_td0_vec);
+        cdf_ups_mats(ix_td0_vec,:) = circshift(cdf_ups_mats(ix_td0_vec,:),ix_t0_shift);
+        cdf_ups_mats(ix_td0_vec,1:ix_t0_shift) = 0;
+        cdf_dow_mats(ix_td0_vec,:) = circshift(cdf_dow_mats(ix_td0_vec,:),ix_t0_shift);
+        cdf_dow_mats(ix_td0_vec,1:ix_t0_shift) = 0;
+    end
+    cdf_ups = sum(cdf_ups_mats,1);
+    cdf_dow = sum(cdf_dow_mats,1);
+    
+end
+end
 
 
 
