@@ -4,7 +4,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
     
     properties
         subject = '';
-        modelclass = '';
+        modelclass = 'base';
         id_model = -1+2^4;
         id_search = 1;
         path_data = '';
@@ -571,7 +571,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             cdf_ups = sum(pMat(xz>p.a,:));
             cdf_dow = sum(pMat(xz<-p.a,:));
             %
-            [cdf_ups,cdf_dow] = cdf_t_st(cdf_ups,cdf_dow,rt,t,st,dt);
+            [cdf_ups,cdf_dow] = cdf_t_st(cdf_ups,cdf_dow,rt,p.t,p.st,dt);
             
             cdf_ups_end = cdf_ups(end);
             cdf_dow_end = cdf_dow(end);
@@ -582,17 +582,29 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pdf_dow = diff(cdf_dow)/dt;
         end
         
-        function [pdf_dow,pdf_ups,t_math,cdf_dow,cdf_ups] = ddm_bru(p,dt,T,N_its)
+        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_bru(p,dt,T,N_its)
             
-            [vec_rt,vec_correct,x,td_tot] = ddm_bru_core(p,dt,T,N_its);
-            error('Need to write conversion to pdf here');
+            [vec_rt,vec_correct,~,~,linspace_t] = ddm_def.ddm_bru_core(p,dt,T,N_its);
+
+            cdf_ups = ksdensity(vec_rt(vec_correct),linspace_t,'Support','Positive','function','cdf');
+            cdf_dow = ksdensity(vec_rt(not(vec_correct)),linspace_t,'Support','Positive','function','cdf');
+            p_ups = sum(vec_correct)/length(vec_correct);
+            p_dow = 1-p_ups;
+            %this is already handled at the moment.
             
+            cdf_ups = cdf_ups*p_ups;
+            cdf_dow = cdf_dow*p_dow;
+            %
+            pdf_ups = diff(cdf_ups)/dt;
+            pdf_dow = diff(cdf_dow)/dt;
+            rt = linspace_t(1:end-1)+dt/2;
         end
-        function [vec_rt,vec_correct,x,td_tot] = ddm_bru_core(p,dt,T,N_its)
+        
+        function [vec_rt,vec_correct,x,td_tot,linspace_t] = ddm_bru_core(p,dt,T,N_its)
             
             %%
             linspace_t = 0:dt:T-dt;
-            t_math = linspace_t(1:end-1)+dt/2;
+            rt = linspace_t(1:end-1)+dt/2;
             %%
             maxIterations = floor(T/dt);
             if length(linspace_t)~=maxIterations,error('Messed up time code');end
@@ -600,23 +612,21 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             x0 = 0;
             x0_trial = 2*(rand(N_its,1)-0.5)*(p.sx) + x0;%n.b. this one is uniform.
             x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
-            x_drift = repmat(p.v*dt,1,maxIterations);
+            x_drift = repmat(p.v,N_its,maxIterations)*dt;
             %%
             x = nan(N_its,maxIterations);
             x(:,1) = x0_trial;
-            
             for ix_t = 2:maxIterations
                 %need to check this before it gets used:
-                error('Mistake in specification of x_drift (wrong dimensions)');
                 x(:,ix_t) = x(:,ix_t-1) + x_noise(:,ix_t) + x_drift(:,ix_t);
             end
             %%
-            x_threshold = +a;
+            x_threshold = +p.a;
             [~,x_upper]=sort(x>x_threshold,2,'descend');% should the sign here be the same????
             x_upper=x_upper(:,1);
             x_upper(x_upper==1) = nan;
             
-            x_threshold = -a;
+            x_threshold = -p.a;
             [~,x_lower]=sort(x<x_threshold,2,'descend');% should the sign here be the same????
             x_lower=x_lower(:,1);
             x_lower(x_lower==1) = nan;
