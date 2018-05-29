@@ -547,7 +547,6 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             N_t = length(linspace_t);
             % CORE
             pMat = zeros(length(xz),N_t);
-            %
             zn = z0*p.v;
             pMat(:,1) = zn;
             %
@@ -612,7 +611,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             x0 = 0;
             x0_trial = 2*(rand(N_its,1)-0.5)*(p.sx) + x0;%n.b. this one is uniform.
             x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
-            x_drift = repmat(p.v,N_its,maxIterations)*dt;
+            x_drift = repmat((p.v + p.sv*randn(N_its,1))*dt,1,maxIterations);
             %%
             x = nan(N_its,maxIterations);
             x(:,1) = x0_trial;
