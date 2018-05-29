@@ -483,7 +483,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pdf_dow = (1-p)*p_ups;%think this is gennerally wrong...
             cdf_ups = cumtrapz(rt,pdf_ups);
             cdf_dow = cumtrapz(rt,pdf_dow);
-            [cdf_ups,cdf_dow] = cdf_t_st(cdf_ups,cdf_dow,rt,t,st,dt);
+            [cdf_ups,cdf_dow] = ddm_def.cdf_t_st(cdf_ups,cdf_dow,rt,t,st,dt);
             
             pdf_ups = diff(cdf_ups)/dt;
             pdf_dow = diff(cdf_dow)/dt;
@@ -491,38 +491,30 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             if not(p.sz==0),error('not dealing with this');end
             if not(p.sv==0),error('not dealing with this');end
         end
-        function p = ftt_01w(tt,w,err)
-            if (pi*tt*err)<1 % if error threshold is set low enough
-                kl=sqrt(-2*log(pi*tt*err)/(pi^2*tt)); % bound
-                kl=max(kl,1/(pi*sqrt(tt))); % ensure boundary conditions met
-            else % if error threshold set too high
-                kl=1/(pi*sqrt(tt)); % set to boundary condition
-            end
-            % calculate number of terms needed for small t
-            if (2*sqrt(2*pi*tt)*err)<1 % if error threshold is set low enough
-                ks=2+sqrt(-2*tt.*log(2*sqrt(2*pi*tt)*err)); % bound
-                ks=max(ks,sqrt(tt)+1); % ensure boundary conditions are met
-            else % if error threshold was set too high
-                ks=2; % minimal kappa for that case
-            end
-            
-            % compute f(tt|0,1,w)
-            p=0; %initialize density
-            if ks<kl % if small t is better (i.e., lambda<0)
-                K=ceil(ks); % round to smallest integer meeting error
-                vec_k = -floor((K-1)/2):ceil((K-1)/2);
-                for k = vec_k
-                    p=p+(w+2*k)*exp(-((w+2*k)^2)/2/tt); % increment sum
-                end
-                p=p/sqrt(2*pi*(tt^3)); % add con_stant term
+        
+        function [cdf_ups,cdf_dow] = cdf_t_st(cdf_ups,cdf_dow,rt,t,st,dt)
+            td0_vec = find((rt>(t-st))&(rt<(t+st)));
+            if length(td0_vec)<=1
+                ix_t0_shift = round((t)/dt);
+                cdf_ups = circshift(cdf_ups,ix_t0_shift);
+                cdf_ups(1:ix_t0_shift) = 0;
+                cdf_dow = circshift(cdf_dow,ix_t0_shift);
+                cdf_dow(1:ix_t0_shift) = 0;
+            else
+                N_vec_c_td = length(td0_vec);
+                cdf_ups_mats = repmat(cdf_ups,N_vec_c_td,1)/N_vec_c_td;
+                cdf_dow_mats = repmat(cdf_dow,N_vec_c_td,1)/N_vec_c_td;
                 
-            else % if large t is better...
-                K= ceil(kl); % round to smallest integer meeting error
-                
-                for k=1:K
-                    p=p+k*exp(-((k^2))*(pi^2)*tt/2)*sin(k*pi*w); % increment sum
+                for ix_td0_vec = 1:length(td0_vec)
+                    ix_t0_shift = td0_vec(ix_td0_vec);
+                    cdf_ups_mats(ix_td0_vec,:) = circshift(cdf_ups_mats(ix_td0_vec,:),ix_t0_shift);
+                    cdf_ups_mats(ix_td0_vec,1:ix_t0_shift) = 0;
+                    cdf_dow_mats(ix_td0_vec,:) = circshift(cdf_dow_mats(ix_td0_vec,:),ix_t0_shift);
+                    cdf_dow_mats(ix_td0_vec,1:ix_t0_shift) = 0;
                 end
-                p=p*pi; % add con_stant term
+                cdf_ups = sum(cdf_ups_mats,1);
+                cdf_dow = sum(cdf_dow_mats,1);
+                
             end
         end
         
@@ -559,21 +551,25 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 p.sv = 0;
                 N_sv = 1;
                 vec_sv = 0;
+                p_sv = 1;
             else
-                N_sv = 25;
+                N_sv = 11;
                 vec_sv = p.sv*linspace(-2.5,2.5,N_sv);
-                
+                p_sv = normpdf(vec_sv,0,p.sv);
+                p_sv = p_sv/sum(p_sv);
             end
             % CORE
-            pMat = zeros(length(xz),N_t,N_sv);
-            zn = x0*p.v;
-            pMat(:,1,:) = repmat(zn,[1,1,N_sv]);
+            
             %
             cdf_ups = nan(N_sv,N_t);
             cdf_dow = nan(N_sv,N_t);
             for ix_sv = 1:N_sv
+                v = (p.v+vec_sv(ix_sv));
+                pMat = zeros(length(xz),N_t);
+                zn = x0*p.v;%I have no idea why this is multiplied by p.v...
+                pMat(:,1) = zn;
                 for ix_t = 2:N_t
-                    xvm_expect = xvm_prev + (p.v+vec_sv(ix_sv))*dt;
+                    xvm_expect = xvm_prev + v*dt;
                     A = (1/sqrt(2*pi*(sig^2)))*exp(-((xvm_probe - xvm_expect).^2)/(2*(sig^2)));
                     An = A./repmat(sum(A,1),length(xz),1);
                     An(isnan(An))=0;
@@ -586,14 +582,15 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     An(end-length(e)+1:end,end-length(e)+1:end) = e;
                     
                     zn = An*zn;
-                    pMat(:,ix_t,ix_sv) = zn;
+                    pMat(:,ix_t) = zn;
                 end
-                cdf_ups(ix_sv,:) = sum(pMat(xz>p.a,:,ix_sv));
-                cdf_dow(ix_sv,:) = sum(pMat(xz<-p.a,:,ix_sv));
+                cdf_ups(ix_sv,:) = sum(pMat(xz>+p.a,:));
+                cdf_dow(ix_sv,:) = sum(pMat(xz<-p.a,:));
             end
-            
+            cdf_dow = p_sv*cdf_dow;
+            cdf_ups = p_sv*cdf_ups;
             %
-            [cdf_ups,cdf_dow] = cdf_t_st(cdf_ups,cdf_dow,rt,p.t,p.st,dt);
+            [cdf_ups,cdf_dow] = ddm_def.cdf_t_st(cdf_ups,cdf_dow,rt,p.t,p.st,dt);
             
             cdf_ups_end = cdf_ups(end);
             cdf_dow_end = cdf_dow(end);
@@ -701,6 +698,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             B_scale = 1/beta_rate;
         end
         
+        
         function x = p2x(xl,p)
             vec_xl = fieldnames(xl);
             x = nan(1,length(vec_xl));
@@ -719,36 +717,210 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 p.(vec_xl{ix_vec_xl}) = x_value;
             end
         end
+        
+        
+        %
+        function p = ftt_01w(tt,w,err)
+            %Translated from HDDM core/N.F paper
+            if (pi*tt*err)<1 % if error threshold is set low enough
+                kl=sqrt(-2*log(pi*tt*err)/(pi^2*tt)); % bound
+                kl=max(kl,1/(pi*sqrt(tt))); % ensure boundary conditions met
+            else % if error threshold set too high
+                kl=1/(pi*sqrt(tt)); % set to boundary condition
+            end
+            % calculate number of terms needed for small t
+            if (2*sqrt(2*pi*tt)*err)<1 % if error threshold is set low enough
+                ks=2+sqrt(-2*tt.*log(2*sqrt(2*pi*tt)*err)); % bound
+                ks=max(ks,sqrt(tt)+1); % ensure boundary conditions are met
+            else % if error threshold was set too high
+                ks=2; % minimal kappa for that case
+            end
+            
+            % compute f(tt|0,1,w)
+            p=0; %initialize density
+            if ks<kl % if small t is better (i.e., lambda<0)
+                K=ceil(ks); % round to smallest integer meeting error
+                vec_k = -floor((K-1)/2):ceil((K-1)/2);
+                for k = vec_k
+                    p=p+(w+2*k)*exp(-((w+2*k)^2)/2/tt); % increment sum
+                end
+                p=p/sqrt(2*pi*(tt^3)); % add con_stant term
+                
+            else % if large t is better...
+                K= ceil(kl); % round to smallest integer meeting error
+                
+                for k=1:K
+                    p=p+k*exp(-((k^2))*(pi^2)*tt/2)*sin(k*pi*w); % increment sum
+                end
+                p=p*pi; % add con_stant term
+            end
+        end
+        
+        function op = hddm_prob_ub(v,a,z)
+            %"""Probability of hitting upper boundary."""
+            op = (exp(-2*a*z*v) - 1) / (exp(-2*a*v) - 1);
+        end
+        
+        
+        function op = hddm_pdf(x,v,a,w,err)
+            %Translated from HDDM core
+            %"""Compute the likelihood of the drift diffusion model f(t|v,a,z) using the method
+            %and implementation of Navarro & Fuss, 2009.
+            %"""
+            if x <= 0
+                op = 0;
+            else
+                
+                tt = x/(a^2);% # use normalized time
+                p = ddm_def.ftt_01w(tt, w, err);% #get f(t|0,1,w)
+                
+                %# convert to f(t|v,a,w)
+                op =  p*exp(-v*a*w -((v^2))*x/2.)/((a^2));
+            end
+        end
+        
+        function op = hddm_pdf_sv(x,v,sv,a,z,err)
+            %Translated from HDDM core
+            %"""Compute the likelihood of the drift diffusion model f(t|v,a,z,sv) using the method
+            %and implementation of Navarro & Fuss, 2009.
+            %sv is the std of the drift rate
+            %"""
+            if x <= 0
+                op = 0;
+            elseif sv==0
+                op =  ddm_def.hddm_pdf(x, v, a, z, err);
+            else
+                tt = x/((a^2)); %# use normalized time
+                p  = ddm_def.ftt_01w(tt, z, err); %#get f(t|0,1,w)
+                
+                %# convert to f(t|v,a,w)
+                op = exp(log(p) + ((a*z*sv)^2 - 2*a*v*z - (v^2)*x)/(2*(sv^2)*x+2))/sqrt((sv^2)*x+1)/(a^2);
+            end
+        end
+        
+        
+        
+        function op = pdf_ana(x,v,sv,a,z,sz,t,st,err)
+            %Translated from HDDM core
+            n_st = 15;
+            n_sz = 15;
+            use_adaptive = 0;
+%             simps_err = 1e-8;
+            %"""full pdf"""
+            %# Check if parpameters are valid (also don't compute if less than t)
+            if (z<0) || (z>1) || (a<0) || (t<0) || (st<0) || (sv<0) || (sz<0) || (sz>1) ||...
+                    ((abs(x)-(t-st/2.))<0) || (z+sz/2.>1) || (z-sz/2.<0) || (t-st/2.<0)
+                op = 0;
+                return;
+            end
+            
+            %# transform x,v,z if x is upper bound response
+            if x > 0
+                v = -v;
+                z = 1.-z;
+            end
+            x = abs(x);
+            
+            if st<1e-3
+                st = 0;
+            end
+            if sz <1e-3
+                sz = 0;
+            end
+            
+            if (sz==0)
+                if (st==0) %#sv=$,sz=0,st=0
+                    op = hddm_pdf_sv(x - t, v, sv, a, z, err);
+                else      %#sv=$,sz=0,st=$
+                    if use_adaptive>0
+                        error('Not copied over');
+                    else
+                        op = ddm_def.hddm_simpson_1D(x, v, sv, a, z, t, err, z, z, 0, t-st/2., t+st/2., n_st);
+                    end
+                end
+            else %#sz=$
+                if (st==0) %#sv=0,sz=$,st=0
+                    if use_adaptive
+                        error('Not copied over');
+                    else
+                        op = ddm_def.hddm_simpson_1D(x, v, sv, a, z, t, err, z-sz/2., z+sz/2., n_sz, t, t , 0);
+                    end
+                else      %#sv=0,sz=$,st=$
+                    if use_adaptive
+                        error('Not copied over');
+                    else
+                        op = ddm_def.hddm_simpson_2D(x, v, sv, a, z, t, err, z-sz/2., z+sz/2., n_sz, t-st/2., t+st/2., n_st);
+                    end
+                end
+            end
+        end
+        
+        
+        
+        function op = hddm_simpson_1D(x, v, sv, a, z, t, err, lb_z, ub_z, n_sz, lb_t, ub_t, n_st)
+            %Translated from HDDM core
+            %assert ((n_sz&1)==0 and (n_st&1)==0), "n_st and n_sz have to be even"
+            %assert ((ub_t-lb_t)*(ub_z-lb_z)==0 and (n_sz*n_st)==0), "the function is defined for 1D-integration only"
+            
+            n = max(n_st, n_sz);
+            if n_st==0 %integration over z
+                hz = (ub_z-lb_z)/n;
+                ht = 0;
+                lb_t = t;
+                ub_t = t;
+            else %integration over t
+                hz = 0;
+                ht = (ub_t-lb_t)/n;
+                lb_z = z;
+                ub_z = z;
+            end
+            S = ddm_def.hddm_pdf_sv(x - lb_t, v, sv, a, lb_z, err);
+            
+            
+            for i = 1:n
+                z_tag = lb_z + hz * i;
+                t_tag = lb_t + ht * i;
+                y = ddm_def.hddm_pdf_sv(x - t_tag, v, sv, a, z_tag, err);
+                if mod(i,2)==1 %check if i is odd
+                    S = S  + (4 * y);
+                else
+                    S = S + (2 * y);
+                end
+            end
+            
+            S = S - y; %the last term should be f(b) and not 2*f(b) so we subtract y
+            
+            S = S / ((ub_t-lb_t)+(ub_z-lb_z)); %the right function if pdf_sv()/sz or pdf_sv()/st
+            
+            op = ((ht+hz) * S / 3);
+        end
+        
+        function op = hddm_simpson_2D(x, v, sv, a, z, t, err, lb_z, ub_z, n_sz, lb_t, ub_t, n_st)
+            %Translated from HDDM core
+            %assert ((n_sz&1)==0 and (n_st&1)==0), "n_st and n_sz have to be even"
+            %assert ((ub_t-lb_t)*(ub_z-lb_z)>0 and (n_sz*n_st)>0), "the function is defined for 2D-integration only, lb_t: %f, ub_t %f, lb_z %f, ub_z %f, n_sz: %d, n_st %d" % (lb_t, ub_t, lb_z, ub_z, n_sz, n_st)
+            
+            ht = (ub_t-lb_t)/n_st;
+            S = simpson_1D(x, v, sv, a, z, lb_t, err, lb_z, ub_z, n_sz, 0, 0, 0);
+            
+            for i_t  = 1:n_st
+                t_tag = lb_t + ht * i_t;
+                y = simpson_1D(x, v, sv, a, z, t_tag, err, lb_z, ub_z, n_sz, 0, 0, 0);
+                if mod(i_t,2)==1 %check if i is odd
+                    S = S + (4 * y);
+                else
+                    S = S + (2 * y);
+                end
+            end
+            S = S - y; %the last term should be f(b) and not 2*f(b) so we subtract y
+            S = S/ (ub_t-lb_t);
+            
+            op = (ht * S / 3);
+        end
     end
-    
-    
 end
 
-function [cdf_ups,cdf_dow] = cdf_t_st(cdf_ups,cdf_dow,rt,t,st,dt)
-td0_vec = find((rt>(t-st))&(rt<(t+st)));
-if length(td0_vec)<=1
-    ix_t0_shift = round((t)/dt);
-    cdf_ups = circshift(cdf_ups,ix_t0_shift);
-    cdf_ups(1:ix_t0_shift) = 0;
-    cdf_dow = circshift(cdf_dow,ix_t0_shift);
-    cdf_dow(1:ix_t0_shift) = 0;
-else
-    N_vec_c_td = length(td0_vec);
-    cdf_ups_mats = repmat(cdf_ups,N_vec_c_td,1)/N_vec_c_td;
-    cdf_dow_mats = repmat(cdf_dow,N_vec_c_td,1)/N_vec_c_td;
-    
-    for ix_td0_vec = 1:length(td0_vec)
-        ix_t0_shift = td0_vec(ix_td0_vec);
-        cdf_ups_mats(ix_td0_vec,:) = circshift(cdf_ups_mats(ix_td0_vec,:),ix_t0_shift);
-        cdf_ups_mats(ix_td0_vec,1:ix_t0_shift) = 0;
-        cdf_dow_mats(ix_td0_vec,:) = circshift(cdf_dow_mats(ix_td0_vec,:),ix_t0_shift);
-        cdf_dow_mats(ix_td0_vec,1:ix_t0_shift) = 0;
-    end
-    cdf_ups = sum(cdf_ups_mats,1);
-    cdf_dow = sum(cdf_dow_mats,1);
-    
-end
-end
+
 
 
 
