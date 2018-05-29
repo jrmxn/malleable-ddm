@@ -17,6 +17,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         fit = [];
         info = [];
         mcmc = [];
+        ddm_pdf = [];
     end
     
     methods
@@ -49,7 +50,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             obj.s.T = 5;
             obj.s.inittype = 'random';
             obj.s.path_data = '';
-            
+            obj.ddm_pdf = @obj.ddm_pdf_ana;
+
             id_search_index  = find(obj.debi_model(obj.id_search,'de','bi'));
             
             % Set the parameters over which to optimise from modelType spec
@@ -462,34 +464,27 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
     end
     methods (Static)
         
-        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_nv(p,dt,T)
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana(p,dt,T,g)
             linspace_t = 0:dt:T-dt;
             rt = linspace_t(1:end-1)+dt/2;
-            warning('need to think about if this is the right covnersion');
-            z = p.x0 + p.a;
-            a = 2*p.a;
+
+            %conversion to notation I have been using:
+            err = 1e-4;
             v = p.v;
+            t = p.t;
+            a = p.a*2;
+            st = p.st*2;
+            sz = p.sz;
+            sv = p.sv;
+            z = 0.5;
             
-            err = 1e-3;%not sure what this should actually be
-            tt = rt/(a^2);
-            w = z/a;
-            p = arrayfun(@(tt) ftt_01w(tt,w,err),tt);
+            p = @(x) ddm_def.hddm_pdf_full(x,v,sv,a,z,sz,t,st,err);
+            pdf_ups = arrayfun(@(x) p(x),+rt);
+            pdf_dow = arrayfun(@(x) p(x),-rt);
             
-            p = p.*exp(-v*a*w - (v^2)*rt/2)/(a^2);
-            p_ups = (exp(-2*a*z*v) - 1) / (exp(-2*a*v) - 1);
-            %not sure how this is dealing with error trials
-            
-            pdf_ups = p*p_ups;
-            pdf_dow = (1-p)*p_ups;%think this is gennerally wrong...
-            cdf_ups = cumtrapz(rt,pdf_ups);
-            cdf_dow = cumtrapz(rt,pdf_dow);
-            [cdf_ups,cdf_dow] = ddm_def.cdf_t_st(cdf_ups,cdf_dow,rt,t,st,dt);
-            
-            pdf_ups = diff(cdf_ups)/dt;
-            pdf_dow = diff(cdf_dow)/dt;
-            %does not currently deal with sv,, sz
-            if not(p.sz==0),error('not dealing with this');end
-            if not(p.sv==0),error('not dealing with this');end
+            cdf_ups = cumtrapz(rt, pdf_ups);
+            cdf_dow = cumtrapz(rt, pdf_dow);
+
         end
         
         function [cdf_ups,cdf_dow] = cdf_t_st(cdf_ups,cdf_dow,rt,t,st,dt)
@@ -518,7 +513,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
         end
         
-        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf(p,dt,T,ddx)
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,dt,T,ddx)
             %
             
             % %n.b. a multiplication by p.th could stabilise
@@ -601,7 +596,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pdf_dow = diff(cdf_dow)/dt;
         end
         
-        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_bru(p,dt,T,N_its)
+        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_bru(p,dt,T,N_its)
             
             [vec_rt,vec_correct,~,~,linspace_t] = ddm_def.ddm_bru_core(p,dt,T,N_its);
             
@@ -800,7 +795,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         
         
-        function op = pdf_ana(x,v,sv,a,z,sz,t,st,err)
+        function op = hddm_pdf_full(x,v,sv,a,z,sz,t,st,err)
+
             %Translated from HDDM core
             n_st = 15;
             n_sz = 15;
@@ -830,7 +826,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             
             if (sz==0)
                 if (st==0) %#sv=$,sz=0,st=0
-                    op = hddm_pdf_sv(x - t, v, sv, a, z, err);
+                    op = ddm_def.hddm_pdf_sv(x - t, v, sv, a, z, err);
                 else      %#sv=$,sz=0,st=$
                     if use_adaptive>0
                         error('Not copied over');
