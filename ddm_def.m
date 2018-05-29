@@ -440,13 +440,23 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pubound_.(p_) = 0.5;
             prior_.(p_) = @(x) unifpdf(x,g_lo,g_up);
             
-            p_ = 'sx';
+            p_ = 'sz';
             modelkey_var{ix} = (p_);ix = ix+1;
-            pran_.(p_) = 0;            %not implemented
+            pran_.(p_) = 0;            %not implemented neither is z
             pdef_.(p_) = 0;
             plbound_.(p_) = 0;
             pubound_.(p_) = pubound_.a/4;%n.b. the hard reference to a!
             prior_.(p_) = @(x) unifpdf(x,0,pubound_.(p_));
+            
+            p_ = 'sv';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_sd = 2;
+            pd_hn = makedist('HalfNormal','mu',0,'sigma',g_sd);
+            pran_.(p_) = pd_hn.random;
+            pdef_.(p_) = 0.0;
+            plbound_.(p_) = 0;
+            pubound_.(p_) = 10;
+            prior_.(p_) = @(x) pdf(pd_hn,x);
             
         end
     end
@@ -478,7 +488,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pdf_ups = diff(cdf_ups)/dt;
             pdf_dow = diff(cdf_dow)/dt;
             %does not currently deal with sv,, sz
-            if not(p.sx==0),error('not dealing with this');end
+            if not(p.sz==0),error('not dealing with this');end
             if not(p.sv==0),error('not dealing with this');end
         end
         function p = ftt_01w(tt,w,err)
@@ -520,7 +530,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             %
             
             % %n.b. a multiplication by p.th could stabilise
-            x0 = 0;
+            z = 0;
             %
             linspace_t = 0:dt:T-dt;
             rt = linspace_t(1:end-1)+dt/2;
@@ -532,43 +542,56 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             xvm_probe = repmat(xz',length(xz),1)';
             xvm_prev = repmat(xz',length(xz),1);
             % This  has to be different...
-            [~,zeroStateIx] = min(abs(xz-(x0)));
-            if p.sx == 0
-                z0 = zeros(length(xz),1);
-                z0(zeroStateIx,1) = 1;
+            [~,zeroStateIx] = min(abs(xz-(z)));
+            if p.sz == 0
+                x0 = zeros(length(xz),1);
+                x0(zeroStateIx,1) = 1;
             else
                 error('not sure if should be gaussian or uniform');
-                %     	z0 = normpdf(xz,xz(zeroStateIx),p.sx);
-                z0 = unifpdf(xz,xz(zeroStateIx)-p.s_x0,xz(zeroStateIx)+p.sx);
-                z0 = z0/sum(z0);
+                %     	z0 = normpdf(xz,xz(zeroStateIx),p.sz);
+                x0 = unifpdf(xz,xz(zeroStateIx)-p.s_x0,xz(zeroStateIx)+p.sz);
+                x0 = x0/sum(x0);
             end
             %
             sig = p.s*sqrt(dt);
             N_t = length(linspace_t);
+            if p.sv<1e-3%arb. threshold used in hddm core
+                p.sv = 0;
+                N_sv = 1;
+                vec_sv = 0;
+            else
+                N_sv = 25;
+                vec_sv = p.sv*linspace(-2.5,2.5,N_sv);
+                
+            end
             % CORE
-            pMat = zeros(length(xz),N_t);
-            zn = z0*p.v;
-            pMat(:,1) = zn;
+            pMat = zeros(length(xz),N_t,N_sv);
+            zn = x0*p.v;
+            pMat(:,1,:) = repmat(zn,[1,1,N_sv]);
             %
-            for ix_t = 2:N_t
-                xvm_expect = xvm_prev + p.v*dt;
-                A = (1/sqrt(2*pi*(sig^2)))*exp(-((xvm_probe - xvm_expect).^2)/(2*(sig^2)));
-                An = A./repmat(sum(A,1),length(xz),1);
-                An(isnan(An))=0;
-                
-                An(:,xz>p.a) = 0;
-                e = eye(sum(xz>p.a));
-                An(1:length(e),1:length(e)) = e;
-                An(:,xz<-p.a) = 0;
-                e = eye(sum(xz<-p.a));
-                An(end-length(e)+1:end,end-length(e)+1:end) = e;
-                
-                zn = An*zn;
-                pMat(:,ix_t) = zn;
+            cdf_ups = nan(N_sv,N_t);
+            cdf_dow = nan(N_sv,N_t);
+            for ix_sv = 1:N_sv
+                for ix_t = 2:N_t
+                    xvm_expect = xvm_prev + (p.v+vec_sv(ix_sv))*dt;
+                    A = (1/sqrt(2*pi*(sig^2)))*exp(-((xvm_probe - xvm_expect).^2)/(2*(sig^2)));
+                    An = A./repmat(sum(A,1),length(xz),1);
+                    An(isnan(An))=0;
+                    
+                    An(:,xz>p.a) = 0;
+                    e = eye(sum(xz>p.a));
+                    An(1:length(e),1:length(e)) = e;
+                    An(:,xz<-p.a) = 0;
+                    e = eye(sum(xz<-p.a));
+                    An(end-length(e)+1:end,end-length(e)+1:end) = e;
+                    
+                    zn = An*zn;
+                    pMat(:,ix_t,ix_sv) = zn;
+                end
+                cdf_ups(ix_sv,:) = sum(pMat(xz>p.a,:,ix_sv));
+                cdf_dow(ix_sv,:) = sum(pMat(xz<-p.a,:,ix_sv));
             end
             
-            cdf_ups = sum(pMat(xz>p.a,:));
-            cdf_dow = sum(pMat(xz<-p.a,:));
             %
             [cdf_ups,cdf_dow] = cdf_t_st(cdf_ups,cdf_dow,rt,p.t,p.st,dt);
             
@@ -584,7 +607,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_bru(p,dt,T,N_its)
             
             [vec_rt,vec_correct,~,~,linspace_t] = ddm_def.ddm_bru_core(p,dt,T,N_its);
-
+            
             cdf_ups = ksdensity(vec_rt(vec_correct),linspace_t,'Support','Positive','function','cdf');
             cdf_dow = ksdensity(vec_rt(not(vec_correct)),linspace_t,'Support','Positive','function','cdf');
             p_ups = sum(vec_correct)/length(vec_correct);
@@ -601,6 +624,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         function [vec_rt,vec_correct,x,td_tot,linspace_t] = ddm_bru_core(p,dt,T,N_its)
             
+            if not(isfield(p,'sv')),p.sv = 0;end
             %%
             linspace_t = 0:dt:T-dt;
             rt = linspace_t(1:end-1)+dt/2;
@@ -609,7 +633,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             if length(linspace_t)~=maxIterations,error('Messed up time code');end
             %%
             x0 = 0;
-            x0_trial = 2*(rand(N_its,1)-0.5)*(p.sx) + x0;%n.b. this one is uniform.
+            x0_trial = 2*(rand(N_its,1)-0.5)*(p.sz) + x0;%n.b. this one is uniform.
             x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
             x_drift = repmat((p.v + p.sv*randn(N_its,1))*dt,1,maxIterations);
             %%
@@ -701,7 +725,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
 end
 
 function [cdf_ups,cdf_dow] = cdf_t_st(cdf_ups,cdf_dow,rt,t,st,dt)
-td0_vec = find((rt>(t)-st)&(rt<(t)+st));
+td0_vec = find((rt>(t-st))&(rt<(t+st)));
 if length(td0_vec)<=1
     ix_t0_shift = round((t)/dt);
     cdf_ups = circshift(cdf_ups,ix_t0_shift);
