@@ -47,11 +47,14 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             obj.s.reinit = false;
             obj.s.dt = 1e-3;
             obj.s.ddx = 100;
-            obj.s.T = 5;
+            obj.s.T = 5;%this could be set dynamically based on closed form
+            obj.s.nits = 25000;
             obj.s.inittype = 'random';
             obj.s.path_data = '';
-            obj.ddm_pdf = @obj.ddm_pdf_ana;
-
+            obj.ddm_pdf = @(a,b) obj.ddm_pdf_ana(a,b);
+            %             obj.ddm_pdf = @(a,b,c) obj.ddm_pdf_bru(a,b,c,obj.s.nits);
+            %             obj.ddm_pdf = @(a,b,c) obj.ddm_pdf_trm(a,b,c,obj.s.ddx);
+            
             id_search_index  = find(obj.debi_model(obj.id_search,'de','bi'));
             
             % Set the parameters over which to optimise from modelType spec
@@ -277,7 +280,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function [t_ups,t_dow,p_ups,p_dow] = ddm_data_draw(obj,p,N)
-            [~,~,t,cdf_dow,cdf_ups] = obj.ddm_pdf(p,obj.s.dt,obj.s.T,obj.s.ddx);
+            [~,~,t,cdf_dow,cdf_ups] = obj.ddm_pdf(p,obj.s.dt,obj.s.T);
             [t_ups,t_dow,p_ups,p_dow] = obj.ddm_pdf2rt(cdf_ups,cdf_dow,t,N);
         end
         
@@ -349,28 +352,30 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             case_right(case_nan) = 0;
             case_right = logical(case_right);
             case_wrong = not(case_right);
-            
+            lt  = 0:obj.s.dt:obj.s.T-obj.s.dt;
             for ix_p_config = 1:height(p_mat_unique)
+                %accuracy coding at the moment... should make this flexible
                 px = table2struct(p_mat_unique(ix_p_config,:));
                 px_array = table2array(p_mat_unique(ix_p_config,:));
-                
-                [pdf_cw,pdf_cr,~,cdf_cw,cdf_cr] = obj.ddm_pdf(px,obj.s.dt,obj.s.T,obj.s.ddx);
-                p_cr = cdf_cr(end);
-                p_cw = cdf_cw(end);
-                
-                %accuracy coding at the moment... should make this flexible
-                
                 case_config = all(p_mat_array==px_array,2);
+                t_cr = obj.data.rt(case_right&case_config&not(case_nan));
+                t_cw = obj.data.rt(case_wrong&case_config&not(case_nan));
                 
+                if contains(func2str(obj.ddm_pdf),'ddm_prt_ana')
+                    pRT_g_cr_x_p_cr = obj.ddm_pdf(px,t_cr);
+                    pRT_g_cw_x_p_cw = obj.ddm_pdf(px,t_cw);
+                else
+                    ix_cr = round(t_cr/obj.s.dt);
+                    ix_cw = round(t_cw/obj.s.dt);
+                    [pdf_cw,pdf_cr,~,cdf_cw,cdf_cr] = obj.ddm_pdf(px,lt);
+                    p_cr = cdf_cr(end);
+                    p_cw = cdf_cw(end);
+                    pRT_g_cr_x_p_cr = pdf_cr(ix_cr)'*p_cr;
+                    pRT_g_cw_x_p_cw = pdf_cw(ix_cw)'*p_cw;
+                end
                 
-                ix_cr = round(obj.data.rt(case_right&case_config&not(case_nan))/obj.s.dt);
-                ix_cw = round(obj.data.rt(case_wrong&case_config&not(case_nan))/obj.s.dt);
-                
-                pRT_g_cr = pdf_cr(ix_cr)';
-                pRT_g_cw = pdf_cw(ix_cw)';
-                
-                p_RT_and_accuracy(case_right&case_config&not(case_nan)) = pRT_g_cr*p_cr;
-                p_RT_and_accuracy(case_wrong&case_config&not(case_nan)) = pRT_g_cw*p_cw;
+                p_RT_and_accuracy(case_right&case_config&not(case_nan)) = pRT_g_cr_x_p_cr;
+                p_RT_and_accuracy(case_wrong&case_config&not(case_nan)) = pRT_g_cw_x_p_cw;
             end
             
             p_RT_and_accuracy(isnan(p_RT_and_accuracy)) = [];
@@ -464,10 +469,24 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
     end
     methods (Static)
         
-        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana(p,dt,T,g)
-            linspace_t = 0:dt:T-dt;
-            rt = linspace_t(1:end-1)+dt/2;
-
+        function  pdf_ = ddm_prt_ana(p,rt)
+            err = 1e-4;
+            v = p.v;
+            t = p.t;
+            a = p.a*2;
+            st = p.st*2;
+            sz = p.sz;
+            sv = p.sv;
+            z = 0.5;
+            
+            p = @(x) ddm_def.hddm_pdf_full(x,v,sv,a,z,sz,t,st,err);
+            pdf_ = arrayfun(@(x) p(x),+rt);
+            
+        end
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana(p,rt)
+            %             linspace_t = 0:dt:T-dt;
+            %             rt = linspace_t(1:end-1)+dt/2;
+            %             rt = lt;
             %conversion to notation I have been using:
             err = 1e-4;
             v = p.v;
@@ -484,7 +503,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             
             cdf_ups = cumtrapz(rt, pdf_ups);
             cdf_dow = cumtrapz(rt, pdf_dow);
-
+            
         end
         
         function [cdf_ups,cdf_dow] = cdf_t_st(cdf_ups,cdf_dow,rt,t,st,dt)
@@ -513,14 +532,15 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
         end
         
-        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,dt,T,ddx)
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,ddx)
             %
-            
+            dt = lt(2)-lt(1);
             % %n.b. a multiplication by p.th could stabilise
             z = 0;
             %
-            linspace_t = 0:dt:T-dt;
-            rt = linspace_t(1:end-1)+dt/2;
+            %             linspace_t = 0:dt:T-dt;
+            %             et = [0:dt:T-dt-dt/2];
+            %             rt = lt(1:end-1)+dt/2;
             %
             xmax = 1.25*p.a+0.2*p.s + p.s;
             xmin = -xmax;
@@ -541,7 +561,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
             %
             sig = p.s*sqrt(dt);
-            N_t = length(linspace_t);
+            N_t = length(lt);
             if p.sv<1e-3%arb. threshold used in hddm core
                 p.sv = 0;
                 N_sv = 1;
@@ -585,7 +605,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             cdf_dow = p_sv*cdf_dow;
             cdf_ups = p_sv*cdf_ups;
             %
-            [cdf_ups,cdf_dow] = ddm_def.cdf_t_st(cdf_ups,cdf_dow,rt,p.t,p.st,dt);
+            [cdf_ups,cdf_dow] = ddm_def.cdf_t_st(cdf_ups,cdf_dow,lt,p.t,p.st,dt);
             
             cdf_ups_end = cdf_ups(end);
             cdf_dow_end = cdf_dow(end);
@@ -594,14 +614,16 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             %
             pdf_ups = diff(cdf_ups)/dt;
             pdf_dow = diff(cdf_dow)/dt;
+            rt = 0.5*(lt(1:end-1)+lt(2:end));
         end
         
-        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_bru(p,dt,T,N_its)
+        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_bru(p,lt,N_its)
             
-            [vec_rt,vec_correct,~,~,linspace_t] = ddm_def.ddm_bru_core(p,dt,T,N_its);
+            dt = lt(2)-lt(1);
+            [vec_rt,vec_correct,~,~,lt] = ddm_def.ddm_pdf_bru_core(p,lt,N_its);
             
-            cdf_ups = ksdensity(vec_rt(vec_correct),linspace_t,'Support','Positive','function','cdf');
-            cdf_dow = ksdensity(vec_rt(not(vec_correct)),linspace_t,'Support','Positive','function','cdf');
+            cdf_ups = ksdensity(vec_rt(vec_correct),lt,'Support','Positive','function','cdf');
+            cdf_dow = ksdensity(vec_rt(not(vec_correct)),lt,'Support','Positive','function','cdf');
             p_ups = sum(vec_correct)/length(vec_correct);
             p_dow = 1-p_ups;
             %this is already handled at the moment.
@@ -611,18 +633,21 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             %
             pdf_ups = diff(cdf_ups)/dt;
             pdf_dow = diff(cdf_dow)/dt;
-            rt = linspace_t(1:end-1)+dt/2;
+            rt = (lt(1:end-1)+lt(2:end))*0.5;
+            %             rt = lt(1:end-1)+dt/2;
         end
         
-        function [vec_rt,vec_correct,x,td_tot,linspace_t] = ddm_bru_core(p,dt,T,N_its)
+        function [vec_rt,vec_correct,x,td_tot,lt] = ddm_pdf_bru_core(p,lt,N_its)
             
             if not(isfield(p,'sv')),p.sv = 0;end
             %%
-            linspace_t = 0:dt:T-dt;
-            rt = linspace_t(1:end-1)+dt/2;
+            %             linspace_t = 0:dt:T-dt;
+            %             rt = linspace_t(1:end-1)+dt/2;
             %%
+            dt = lt(2)-lt(1);
+            T = lt(end)+dt;
             maxIterations = floor(T/dt);
-            if length(linspace_t)~=maxIterations,error('Messed up time code');end
+            if (length(lt)-1)~=maxIterations,error('Messed up time code');end
             %%
             x0 = 0;
             x0_trial = 2*(rand(N_its,1)-0.5)*(p.sz) + x0;%n.b. this one is uniform.
@@ -649,8 +674,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             x_bounds = [x_upper,x_lower];
             x_bounds = gather(x_bounds);
             [ix_time,vec_correct] = nanmin(x_bounds,[],2);
-            ix_time(isnan(ix_time)) = length(linspace_t);%not sure if this is best way to deal with problem...
-            vec_rt = linspace_t(ix_time)';
+            ix_time(isnan(ix_time)) = length(lt);%not sure if this is best way to deal with problem...
+            vec_rt = lt(ix_time)';
             % don't think the time shift can change winner/loser so do it here.
             
             td_tot = p.t + 2*(rand(N_its,1)-0.5)*p.st;
@@ -796,12 +821,12 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         
         function op = hddm_pdf_full(x,v,sv,a,z,sz,t,st,err)
-
+            
             %Translated from HDDM core
             n_st = 15;
             n_sz = 15;
             use_adaptive = 0;
-%             simps_err = 1e-8;
+            %             simps_err = 1e-8;
             %"""full pdf"""
             %# Check if parpameters are valid (also don't compute if less than t)
             if (z<0) || (z>1) || (a<0) || (t<0) || (st<0) || (sv<0) || (sz<0) || (sz>1) ||...
