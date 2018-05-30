@@ -479,18 +479,15 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
     methods (Static)
         
         function  pdf_ = ddm_prt_ana(p,rt)
-            err = 1e-6;
+            err = 1e-8;
             
             p = @(x) ddm_def.hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
             pdf_ = arrayfun(@(x) p(x),+rt);
             
         end
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana(p,rt)
-            %             linspace_t = 0:dt:T-dt;
-            %             rt = linspace_t(1:end-1)+dt/2;
-            %             rt = lt;
-            %conversion to notation I have been using:
-            err = 1e-6;
+
+            err = 1e-8;
             
             p = @(x) ddm_def.hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
             pdf_ups = arrayfun(@(x) p(x),+rt);
@@ -787,7 +784,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 p = ddm_def.ftt_01w(tt, w, err);% #get f(t|0,1,w)
                 
                 %# convert to f(t|v,a,w)
-                op =  p*exp(-v*a*w -((v^2))*x/2.)/((a^2));
+                op =  p*exp(-v*a*w -(v^2)*x/2)/((a^2));
             end
         end
         
@@ -802,7 +799,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             elseif sv==0
                 op =  ddm_def.hddm_pdf(x, v, a, z, err);
             else
-                tt = x/((a^2)); %# use normalized time
+                tt = x/(a^2); %# use normalized time
                 p  = ddm_def.ftt_01w(tt, z, err); %#get f(t|0,1,w)
                 
                 %# convert to f(t|v,a,w)
