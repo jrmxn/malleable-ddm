@@ -4,7 +4,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
     
     properties
         subject = '';
-        modelclass = 'base';
+        modelclass = '';
         id_model = -1+2^4;
         id_search = 1;
         path_data = '';
@@ -50,7 +50,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             obj.s.dx = 0.01;%0.01 about = ddx = 100
             obj.s.T = 5;%this could be set dynamically based on closed form
             obj.s.nits = 25000;
-            obj.s.inittype = 'random';
+%             obj.s.inittype = 'random';
             obj.s.path_data = '';
             obj.ddm_pdf = @(a,b) obj.ddm_pdf_ana(a,b);
             %             obj.ddm_pdf = @(a,b,c) obj.ddm_pdf_bru(a,b,c,obj.s.nits);
@@ -94,15 +94,27 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             
             if fit_ix_==1
                 %p is defined from a full set of defaults/random init
-                init_p_full = obj.ddm_get_instance(['init_' obj.s.inittype]);
+                init_p_full_random = obj.ddm_get_instance(['init_' 'random']);
+                init_p_full_default = obj.ddm_get_instance(['init_' 'default']);
                 % and now we need to reduce it to match the specific model
                 % configuration we are testing.
                 id_model_index = find(obj.debi_model(obj.id_model,'de','bi'));
+                id_search_index  = find(obj.debi_model(obj.id_search,'de','bi'));
+                
                 for ix_parameter_cell = 1:length(obj.modelKey)
                     parameter_string = obj.modelKey{ix_parameter_cell};
-                    if any(strcmp(parameter_string,obj.modelKey(id_model_index)))
-                        init_p_reduced.(parameter_string) = init_p_full.(parameter_string);
+                    if any(strcmp(parameter_string,obj.modelKey(id_search_index)))
+                        %if we are going to try to optimise this parameter
+                        %then get it from a distribution
+                        init_p_reduced.(parameter_string) = init_p_full_random.(parameter_string);
+                    elseif any(strcmp(parameter_string,obj.modelKey(id_model_index)))
+                        %If they are not in search but they are in the
+                        %base model def set them to defaults (e.g. usually
+%                         s = 1, z = 0.5)
+                        init_p_reduced.(parameter_string) = init_p_full_default.(parameter_string);
                     else
+                        % if the parameter just isn't in this model
+                        % definition.
                         init_p_reduced.(parameter_string) = 0;
                     end
                 end
@@ -408,13 +420,34 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pubound_.(p_) = 1;
             prior_.(p_) = @(x) 1;
             
+            p_ = 'z';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_alpha = 5;
+            g_beta = 5;
+            pd_hn = makedist('beta','a',g_alpha,'b',g_beta);
+            pran_.(p_) = pd_hn.random;
+            pdef_.(p_) = 0.5;
+            plbound_.(p_) = 0;
+            pubound_.(p_) = 1;
+            prior_.(p_) = @(x) pdf(pd_hn,x);
+            
+            p_ = 'v';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_mea = 3;g_std = 1;
+            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
+            pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
+            pdef_.(p_) = 0.0;
+            plbound_.(p_) = -7.5;
+            pubound_.(p_) = 7.5;
+            prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
+            
             p_ = 'a';
             modelkey_var{ix} = (p_);ix = ix+1;
-            g_mea = 0.6;g_std = 0.15;
+            g_mea = 1;g_std = 0.25;
             [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
             pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
             pdef_.(p_) = 1.0;
-            plbound_.(p_) = 0.01;
+            plbound_.(p_) = 0.1;
             pubound_.(p_) = 7.5;
             prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
             
@@ -428,20 +461,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pubound_.(p_) = 0.75;
             prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
             
-            p_ = 'v';
-            modelkey_var{ix} = (p_);ix = ix+1;
-            g_mea = 3;g_std = 1;
-            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
-            pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
-            pdef_.(p_) = 0.0;
-            plbound_.(p_) = -7.5;
-            pubound_.(p_) = 7.5;
-            prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
-            
             p_ = 'st';
             modelkey_var{ix} = (p_);ix = ix+1;
             g_lo = 0;
-            g_up = 0.15;
+            g_up = 0.25;
             pran_.(p_) = unifrnd(g_lo,g_up);
             pdef_.(p_) = 0.0;
             plbound_.(p_) = 0;
@@ -460,19 +483,14 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             
             p_ = 'sz';
             modelkey_var{ix} = (p_);ix = ix+1;
-            pran_.(p_) = 0;            %not implemented neither is z
-            pdef_.(p_) = 0;
+            g_alpha = 1;
+            g_beta = 3;
+            pd_hn = makedist('beta','a',g_alpha,'b',g_beta);
+            pran_.(p_) = pd_hn.random;
+            pdef_.(p_) = 0.0;
             plbound_.(p_) = 0;
-            pubound_.(p_) = pubound_.a/8;%n.b. the hard reference to a!
-            prior_.(p_) = @(x) unifpdf(x,0,pubound_.(p_));%wrong
-            
-            p_ = 'z';
-            modelkey_var{ix} = (p_);ix = ix+1;
-            pran_.(p_) = 0.5;            %not implemented neither is z
-            pdef_.(p_) = 0.5;
-            plbound_.(p_) = 0.5;
-            pubound_.(p_) = 0.5;
-            prior_.(p_) = @(x) unifpdf(x,0,pubound_.(p_));%wrong
+            pubound_.(p_) = 1;
+            prior_.(p_) = @(x) pdf(pd_hn,x);
             
         end
     end
@@ -536,13 +554,11 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             xvm_prev = repmat(xz',length(xz),1);
             % This  has to be different...
             [~,zeroStateIx] = min(abs(xz-(p.z*p.a)));
-            if (p.z > 0.5-1e-3)||(p.z < 0.5+1e-3)
+            if (p.sz <= 1e-3)
                 x0 = zeros(length(xz),1);
                 x0(zeroStateIx,1) = 1;
             else
-                error('not sure if should be gaussian or uniform');
-                %     	z0 = normpdf(xz,xz(zeroStateIx),p.sz);
-                x0 = unifpdf(xz,xz(zeroStateIx)-p.s_x0,xz(zeroStateIx)+p.sz);
+                x0 = unifpdf(xz,xz(zeroStateIx)-p.sz/2,xz(zeroStateIx)+p.sz/2);
                 x0 = x0/sum(x0);
             end
             %
@@ -559,18 +575,22 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 p_sv = normpdf(vec_sv,0,p.sv);
                 p_sv = p_sv/sum(p_sv);
             end
-            % CORE
             
-            % not sure if quicker, but this could be written as tensor
-            % multiplication
+            % CORE
             cdf_ups = nan(N_sv,N_t);
             cdf_dow = nan(N_sv,N_t);
             for ix_sv = 1:N_sv
                 v = (p.v+vec_sv(ix_sv));
                 pMat = zeros(length(xz),N_t);
-                % % % % % % % %  need to think about this!?!
-                zn = x0*p.v;%I have no idea why this is multiplied by p.v...
-                % % % % % % % % %
+                
+                zn = x0;%used to have a multiplication with v here (not sure why)
+                xz_ups = xz>p.a;
+                xz_dow = xz<0;
+                e_ups = eye(sum(xz_ups));
+                e_dow = eye(sum(xz_dow));
+                len_e_ups = length(e_ups);
+                len_e_dow = length(e_dow);
+                
                 pMat(:,1) = zn;
                 for ix_t = 2:N_t
                     xvm_expect = xvm_prev + v*dt;
@@ -579,18 +599,17 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     An(isnan(An))=0;
                     
                     An(:,xz>p.a) = 0;
-                    e = eye(sum(xz>p.a));
-                    An(1:length(e),1:length(e)) = e;
+                    An(1:len_e_ups,1:len_e_ups) = e_ups;
                     An(:,xz<0) = 0;
-                    e = eye(sum(xz<0));
-                    An(end-length(e)+1:end,end-length(e)+1:end) = e;
+                    An(end-len_e_dow+1:end,end-len_e_dow+1:end) = e_dow;
                     
                     zn = An*zn;
                     pMat(:,ix_t) = zn;
                 end
-                cdf_ups(ix_sv,:) = sum(pMat(xz>+p.a,:));
-                cdf_dow(ix_sv,:) = sum(pMat(xz<0,:));
+                cdf_ups(ix_sv,:) = sum(pMat(xz_ups,:));
+                cdf_dow(ix_sv,:) = sum(pMat(xz_dow,:));
             end
+            
             cdf_dow = p_sv*cdf_dow;
             cdf_ups = p_sv*cdf_ups;
             %
@@ -623,15 +642,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pdf_ups = diff(cdf_ups)/dt;
             pdf_dow = diff(cdf_dow)/dt;
             rt = (lt(1:end-1)+lt(2:end))*0.5;
-            %             rt = lt(1:end-1)+dt/2;
         end
         
         function [vec_rt,vec_correct,x,td_tot,lt] = ddm_pdf_bru_core(p,lt,N_its)
-            
-            if not(isfield(p,'sv')),p.sv = 0;end
-            %%
-            %             linspace_t = 0:dt:T-dt;
-            %             rt = linspace_t(1:end-1)+dt/2;
             %%
             dt = lt(2)-lt(1);
             T = lt(end)+dt;
@@ -639,7 +652,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             if (length(lt)-1)~=maxIterations,error('Messed up time code');end
             %%
             x0 = p.z*p.a;
-            x0_trial = 2*(rand(N_its,1)-0.5)*(p.sz) + x0;%n.b. this one is uniform.
+            x0_trial = (rand(N_its,1)-0.5)*(p.sz) + x0;%n.b. this one is uniform.
             x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
             x_drift = repmat((p.v + p.sv*randn(N_its,1))*dt,1,maxIterations);
             %%
@@ -911,11 +924,11 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             %assert ((ub_t-lb_t)*(ub_z-lb_z)>0 and (n_sz*n_st)>0), "the function is defined for 2D-integration only, lb_t: %f, ub_t %f, lb_z %f, ub_z %f, n_sz: %d, n_st %d" % (lb_t, ub_t, lb_z, ub_z, n_sz, n_st)
             
             ht = (ub_t-lb_t)/n_st;
-            S = simpson_1D(x, v, sv, a, z, lb_t, err, lb_z, ub_z, n_sz, 0, 0, 0);
+            S = ddm_def.hddm_simpson_1D(x, v, sv, a, z, lb_t, err, lb_z, ub_z, n_sz, 0, 0, 0);
             
             for i_t  = 1:n_st
                 t_tag = lb_t + ht * i_t;
-                y = simpson_1D(x, v, sv, a, z, t_tag, err, lb_z, ub_z, n_sz, 0, 0, 0);
+                y = ddm_def.hddm_simpson_1D(x, v, sv, a, z, t_tag, err, lb_z, ub_z, n_sz, 0, 0, 0);
                 if mod(i_t,2)==1 %check if i is odd
                     S = S + (4 * y);
                 else
