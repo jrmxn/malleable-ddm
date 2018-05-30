@@ -46,11 +46,11 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             obj.s.minAlgo = 'nll';
             obj.s.reinit = false;
             obj.s.dt = 1e-3;
-%             obj.s.ddx = 100;%no longer used
+            %             obj.s.ddx = 100;%no longer used
             obj.s.dx = 0.01;%0.01 about = ddx = 100
             obj.s.T = 5;%this could be set dynamically based on closed form
             obj.s.nits = 25000;
-%             obj.s.inittype = 'random';
+            %             obj.s.inittype = 'random';
             obj.s.path_data = '';
             obj.ddm_pdf = @(a,b) obj.ddm_pdf_ana(a,b);
             %             obj.ddm_pdf = @(a,b,c) obj.ddm_pdf_bru(a,b,c,obj.s.nits);
@@ -110,7 +110,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     elseif any(strcmp(parameter_string,obj.modelKey(id_model_index)))
                         %If they are not in search but they are in the
                         %base model def set them to defaults (e.g. usually
-%                         s = 1, z = 0.5)
+                        %                         s = 1, z = 0.5)
                         init_p_reduced.(parameter_string) = init_p_full_default.(parameter_string);
                     else
                         % if the parameter just isn't in this model
@@ -293,7 +293,12 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function [t_ups,t_dow,p_ups,p_dow] = ddm_data_draw(obj,p,N)
-            [~,~,t,cdf_dow,cdf_ups] = obj.ddm_pdf(p,obj.s.dt,obj.s.T);
+            if contains(func2str(obj.ddm_pdf),'ddm_prt_ana')
+                error('Need a full pdf generator from which to draw');
+            end
+            lt  = 0:obj.s.dt:obj.s.T-obj.s.dt;
+            
+            [~,~,t,cdf_dow,cdf_ups] = obj.ddm_pdf(p,lt);
             [t_ups,t_dow,p_ups,p_dow] = obj.ddm_pdf2rt(cdf_ups,cdf_dow,t,N);
         end
         
@@ -504,7 +509,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             
         end
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana(p,rt)
-
+            
             err = 1e-8;
             
             p = @(x) ddm_def.hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
@@ -541,6 +546,24 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 
             end
         end
+        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_bru(p,lt,N_its)
+            
+            dt = lt(2)-lt(1);
+            [vec_rt,vec_correct,~,~,lt] = ddm_def.ddm_pdf_bru_core(p,lt,N_its);
+            
+            cdf_ups = ksdensity(vec_rt(vec_correct),lt,'Support','Positive','function','cdf');
+            cdf_dow = ksdensity(vec_rt(not(vec_correct)),lt,'Support','Positive','function','cdf');
+            p_ups = sum(vec_correct)/length(vec_correct);
+            p_dow = 1-p_ups;
+            %this is already handled at the moment.
+            
+            cdf_ups = cdf_ups*p_ups;
+            cdf_dow = cdf_dow*p_dow;
+            %
+            pdf_ups = diff(cdf_ups)/dt;
+            pdf_dow = diff(cdf_dow)/dt;
+            rt = (lt(1:end-1)+lt(2:end))*0.5;
+        end
         
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,dx)
             %
@@ -548,12 +571,13 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             f = 10;%not sure what the consequence of shrinking this is
             xmax = p.a + f*sqrt(dt)*p.s;
             xmin = 0 - f*sqrt(dt)*p.s;
-
+            
             xz = [xmax:-dx:xmin]';
             xvm_probe = repmat(xz',length(xz),1)';
             xvm_prev = repmat(xz',length(xz),1);
-            % This  has to be different...
-            [~,zeroStateIx] = min(abs(xz-(p.z*p.a)));
+            
+            za = (p.z*p.a);
+            [~,zeroStateIx] = min(abs(xz-za));
             if (p.sz <= 1e-3)
                 x0 = zeros(length(xz),1);
                 x0(zeroStateIx,1) = 1;
@@ -625,24 +649,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             rt = 0.5*(lt(1:end-1)+lt(2:end));
         end
         
-        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_bru(p,lt,N_its)
-            
-            dt = lt(2)-lt(1);
-            [vec_rt,vec_correct,~,~,lt] = ddm_def.ddm_pdf_bru_core(p,lt,N_its);
-            
-            cdf_ups = ksdensity(vec_rt(vec_correct),lt,'Support','Positive','function','cdf');
-            cdf_dow = ksdensity(vec_rt(not(vec_correct)),lt,'Support','Positive','function','cdf');
-            p_ups = sum(vec_correct)/length(vec_correct);
-            p_dow = 1-p_ups;
-            %this is already handled at the moment.
-            
-            cdf_ups = cdf_ups*p_ups;
-            cdf_dow = cdf_dow*p_dow;
-            %
-            pdf_ups = diff(cdf_ups)/dt;
-            pdf_dow = diff(cdf_dow)/dt;
-            rt = (lt(1:end-1)+lt(2:end))*0.5;
-        end
+        
         
         function [vec_rt,vec_correct,x,td_tot,lt] = ddm_pdf_bru_core(p,lt,N_its)
             %%
