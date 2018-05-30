@@ -46,14 +46,15 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             obj.s.minAlgo = 'nll';
             obj.s.reinit = false;
             obj.s.dt = 1e-3;
-            obj.s.ddx = 100;
+%             obj.s.ddx = 100;%no longer used
+            obj.s.dx = 0.01;%0.01 about = ddx = 100
             obj.s.T = 5;%this could be set dynamically based on closed form
             obj.s.nits = 25000;
             obj.s.inittype = 'random';
             obj.s.path_data = '';
             obj.ddm_pdf = @(a,b) obj.ddm_pdf_ana(a,b);
             %             obj.ddm_pdf = @(a,b,c) obj.ddm_pdf_bru(a,b,c,obj.s.nits);
-            %             obj.ddm_pdf = @(a,b,c) obj.ddm_pdf_trm(a,b,c,obj.s.ddx);
+            %             obj.ddm_pdf = @(a,b,c) obj.ddm_pdf_trm(a,b,c,obj.s.dx);
             
             id_search_index  = find(obj.debi_model(obj.id_search,'de','bi'));
             
@@ -447,14 +448,6 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pubound_.(p_) = 0.5;
             prior_.(p_) = @(x) unifpdf(x,g_lo,g_up);
             
-            p_ = 'sz';
-            modelkey_var{ix} = (p_);ix = ix+1;
-            pran_.(p_) = 0;            %not implemented neither is z
-            pdef_.(p_) = 0;
-            plbound_.(p_) = 0;
-            pubound_.(p_) = pubound_.a/4;%n.b. the hard reference to a!
-            prior_.(p_) = @(x) unifpdf(x,0,pubound_.(p_));
-            
             p_ = 'sv';
             modelkey_var{ix} = (p_);ix = ix+1;
             g_sd = 2;
@@ -465,21 +458,30 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pubound_.(p_) = 10;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
+            p_ = 'sz';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            pran_.(p_) = 0;            %not implemented neither is z
+            pdef_.(p_) = 0;
+            plbound_.(p_) = 0;
+            pubound_.(p_) = pubound_.a/8;%n.b. the hard reference to a!
+            prior_.(p_) = @(x) unifpdf(x,0,pubound_.(p_));%wrong
+            
+            p_ = 'z';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            pran_.(p_) = 0.5;            %not implemented neither is z
+            pdef_.(p_) = 0.5;
+            plbound_.(p_) = 0.5;
+            pubound_.(p_) = 0.5;
+            prior_.(p_) = @(x) unifpdf(x,0,pubound_.(p_));%wrong
+            
         end
     end
     methods (Static)
         
         function  pdf_ = ddm_prt_ana(p,rt)
-            err = 1e-4;
-            v = p.v;
-            t = p.t;
-            a = p.a*2;
-            st = p.st*2;
-            sz = p.sz;
-            sv = p.sv;
-            z = 0.5;
+            err = 1e-6;
             
-            p = @(x) ddm_def.hddm_pdf_full(x,v,sv,a,z,sz,t,st,err);
+            p = @(x) ddm_def.hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
             pdf_ = arrayfun(@(x) p(x),+rt);
             
         end
@@ -488,16 +490,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             %             rt = linspace_t(1:end-1)+dt/2;
             %             rt = lt;
             %conversion to notation I have been using:
-            err = 1e-4;
-            v = p.v;
-            t = p.t;
-            a = p.a*2;
-            st = p.st*2;
-            sz = p.sz;
-            sv = p.sv;
-            z = 0.5;
+            err = 1e-6;
             
-            p = @(x) ddm_def.hddm_pdf_full(x,v,sv,a,z,sz,t,st,err);
+            p = @(x) ddm_def.hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
             pdf_ups = arrayfun(@(x) p(x),+rt);
             pdf_dow = arrayfun(@(x) p(x),-rt);
             
@@ -507,7 +502,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function [cdf_ups,cdf_dow] = cdf_t_st(cdf_ups,cdf_dow,rt,t,st,dt)
-            td0_vec = find((rt>(t-st))&(rt<(t+st)));
+            td0_vec = find((rt>(t-st/2))&(rt<(t+st/2)));
             if length(td0_vec)<=1
                 ix_t0_shift = round((t)/dt);
                 cdf_ups = circshift(cdf_ups,ix_t0_shift);
@@ -532,25 +527,19 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
         end
         
-        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,ddx)
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,dx)
             %
             dt = lt(2)-lt(1);
-            % %n.b. a multiplication by p.th could stabilise
-            z = 0;
-            %
-            %             linspace_t = 0:dt:T-dt;
-            %             et = [0:dt:T-dt-dt/2];
-            %             rt = lt(1:end-1)+dt/2;
-            %
-            xmax = 1.25*p.a+0.2*p.s + p.s;
-            xmin = -xmax;
-            dx = (xmax-xmin)/ddx;%n.b. if you change the resolution here (100) - then you need to recompile the mex
+            f = 10;%not sure what the consequence of shrinking this is
+            xmax = p.a + f*sqrt(dt)*p.s;
+            xmin = 0 - f*sqrt(dt)*p.s;
+
             xz = [xmax:-dx:xmin]';
             xvm_probe = repmat(xz',length(xz),1)';
             xvm_prev = repmat(xz',length(xz),1);
             % This  has to be different...
-            [~,zeroStateIx] = min(abs(xz-(z)));
-            if p.sz == 0
+            [~,zeroStateIx] = min(abs(xz-(p.z*p.a)));
+            if (p.z > 0.5-1e-3)||(p.z < 0.5+1e-3)
                 x0 = zeros(length(xz),1);
                 x0(zeroStateIx,1) = 1;
             else
@@ -575,13 +564,16 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
             % CORE
             
-            %
+            % not sure if quicker, but this could be written as tensor
+            % multiplication
             cdf_ups = nan(N_sv,N_t);
             cdf_dow = nan(N_sv,N_t);
             for ix_sv = 1:N_sv
                 v = (p.v+vec_sv(ix_sv));
                 pMat = zeros(length(xz),N_t);
+                % % % % % % % %  need to think about this!?!
                 zn = x0*p.v;%I have no idea why this is multiplied by p.v...
+                % % % % % % % % %
                 pMat(:,1) = zn;
                 for ix_t = 2:N_t
                     xvm_expect = xvm_prev + v*dt;
@@ -592,15 +584,15 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     An(:,xz>p.a) = 0;
                     e = eye(sum(xz>p.a));
                     An(1:length(e),1:length(e)) = e;
-                    An(:,xz<-p.a) = 0;
-                    e = eye(sum(xz<-p.a));
+                    An(:,xz<0) = 0;
+                    e = eye(sum(xz<0));
                     An(end-length(e)+1:end,end-length(e)+1:end) = e;
                     
                     zn = An*zn;
                     pMat(:,ix_t) = zn;
                 end
                 cdf_ups(ix_sv,:) = sum(pMat(xz>+p.a,:));
-                cdf_dow(ix_sv,:) = sum(pMat(xz<-p.a,:));
+                cdf_dow(ix_sv,:) = sum(pMat(xz<0,:));
             end
             cdf_dow = p_sv*cdf_dow;
             cdf_ups = p_sv*cdf_ups;
@@ -649,7 +641,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             maxIterations = floor(T/dt);
             if (length(lt)-1)~=maxIterations,error('Messed up time code');end
             %%
-            x0 = 0;
+            x0 = p.z*p.a;
             x0_trial = 2*(rand(N_its,1)-0.5)*(p.sz) + x0;%n.b. this one is uniform.
             x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
             x_drift = repmat((p.v + p.sv*randn(N_its,1))*dt,1,maxIterations);
@@ -666,7 +658,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             x_upper=x_upper(:,1);
             x_upper(x_upper==1) = nan;
             
-            x_threshold = -p.a;
+            x_threshold = 0;
             [~,x_lower]=sort(x<x_threshold,2,'descend');% should the sign here be the same????
             x_lower=x_lower(:,1);
             x_lower(x_lower==1) = nan;
@@ -678,7 +670,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             vec_rt = lt(ix_time)';
             % don't think the time shift can change winner/loser so do it here.
             
-            td_tot = p.t + 2*(rand(N_its,1)-0.5)*p.st;
+            td_tot = p.t + (rand(N_its,1)-0.5)*p.st;
             vec_rt = vec_rt + td_tot;
             
             vec_correct = vec_correct==1;
