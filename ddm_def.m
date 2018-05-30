@@ -362,8 +362,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 t_cw = obj.data.rt(case_wrong&case_config&not(case_nan));
                 
                 if contains(func2str(obj.ddm_pdf),'ddm_prt_ana')
-                    pRT_g_cr_x_p_cr = obj.ddm_pdf(px,t_cr);
-                    pRT_g_cw_x_p_cw = obj.ddm_pdf(px,t_cw);
+                    pRT_g_cr_x_p_cr = obj.ddm_pdf(px,+t_cr);
+                    pRT_g_cw_x_p_cw = obj.ddm_pdf(px,-t_cw);
                 else
                     ix_cr = round(t_cr/obj.s.dt);
                     ix_cw = round(t_cw/obj.s.dt);
