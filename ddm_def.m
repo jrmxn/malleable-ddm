@@ -452,8 +452,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             
             p_ = 'v';
             modelkey_var{ix} = (p_);ix = ix+1;
-            g_mea = 3;g_std = 1;
-            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
+            g_mea = 3;g_sd = 1;
+            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_sd);
             pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
             pdef_.(p_) = 0.0;
             plbound_.(p_) = -7.5;
@@ -462,8 +462,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             
             p_ = 'a';
             modelkey_var{ix} = (p_);ix = ix+1;
-            g_mea = 1;g_std = 0.25;
-            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
+            g_mea = 1;g_sd = 0.25;
+            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_sd);
             pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
             pdef_.(p_) = 1.0;
             plbound_.(p_) = 0.1;
@@ -472,8 +472,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             
             p_ = 't';
             modelkey_var{ix} = (p_);ix = ix+1;
-            g_mea = 0.3;g_std = 0.075;
-            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_std);
+            g_mea = 0.3;g_sd = 0.075;
+            [A_shape,B_scale] = obj.gamma_convert(g_mea,g_sd);
             pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
             pdef_.(p_) = 0.25;
             plbound_.(p_) = 0.1;
@@ -518,17 +518,17 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function  pdf_ = ddm_prt_ana(p,rt)
             err = 1e-8;
             
-            p = @(x) ddm_def.hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
-            pdf_ = arrayfun(@(x) p(x),+rt);
+            h_pdf = @(x) ddm_def.hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
+            pdf_ = arrayfun(@(x) h_pdf(x),+rt);
             
         end
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana(p,rt)
             
             err = 1e-8;
             
-            p = @(x) ddm_def.hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
-            pdf_ups = arrayfun(@(x) p(x),+rt);
-            pdf_dow = arrayfun(@(x) p(x),-rt);
+            h_pdf = @(x) ddm_def.hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
+            pdf_ups = arrayfun(@(x) h_pdf(x),+rt);
+            pdf_dow = arrayfun(@(x) h_pdf(x),-rt);
             
             cdf_ups = cumtrapz(rt, pdf_ups);
             cdf_dow = cumtrapz(rt, pdf_dow);
