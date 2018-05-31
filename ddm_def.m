@@ -172,6 +172,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     'UseParallel',obj.opt.parallelsearch,'UseCompletePoll',obj.opt.parallelsearch);%,
                 
                 f = @(x) obj.opt.h_cost(x,fit_init.p);
+                fprintf('Starting fit for %s\n',obj.subject);
                 [x,Fps] = patternsearch(@(x)...
                     f(x)...
                     ,x,[],[],[],[],x_lb,x_ub,minoptions);
