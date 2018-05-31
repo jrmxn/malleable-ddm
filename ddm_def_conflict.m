@@ -31,7 +31,7 @@ classdef ddm_def_conflict < ddm_def
             plbound_.(p_) = 0;
             pubound_.(p_) = 20;
             prior_.(p_) = @(x) pdf(pd_hn,x);
-
+            
             p_ = 'zc';
             modelkey_var{ix} = (p_);ix = ix+1;
             g_alpha = 1;
@@ -44,27 +44,92 @@ classdef ddm_def_conflict < ddm_def
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
         end
+        
+        
     end
     methods (Static)
         
-         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,dx)
+        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_bru(p,lt,N_its)
+            
+            dt = lt(2)-lt(1);
+            
+            dt = lt(2)-lt(1);
+            T = lt(end)+dt;
+            maxIterations = floor(T/dt);
+            if (length(lt)-1)~=maxIterations,error('Messed up time code');end
+            %%
+            %modification for conflict
+            z = p.z - 0.5*(2*p.c-1)*p.zc;
+            x0 = z*p.a;
+            x0_trial = (rand(N_its,1)-0.5)*(p.sz) + x0;%n.b. this one is uniform.
+            x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
+            
+            %modification for conflict
+            V = repmat((p.v + p.sv*randn(N_its,1)),1,maxIterations);
+            CB = repmat(p.c*p.b*lt,N_its,1);
+            x_drift = V*(1+CB)*dt;
+            %%
+            x = nan(N_its,maxIterations);
+            x(:,1) = x0_trial;
+            for ix_t = 2:maxIterations
+                %need to check this before it gets used:
+                x(:,ix_t) = x(:,ix_t-1) + x_noise(:,ix_t) + x_drift(:,ix_t);
+            end
+            %%
+            x_threshold = +p.a;
+            [~,x_upper]=sort(x>x_threshold,2,'descend');% should the sign here be the same????
+            x_upper=x_upper(:,1);
+            x_upper(x_upper==1) = nan;
+            
+            x_threshold = 0;
+            [~,x_lower]=sort(x<x_threshold,2,'descend');% should the sign here be the same????
+            x_lower=x_lower(:,1);
+            x_lower(x_lower==1) = nan;
+            
+            x_bounds = [x_upper,x_lower];
+            x_bounds = gather(x_bounds);
+            [ix_time,vec_correct] = nanmin(x_bounds,[],2);
+            ix_time(isnan(ix_time)) = length(lt);%not sure if this is best way to deal with problem...
+            vec_rt = lt(ix_time)';
+            % don't think the time shift can change winner/loser so do it here.
+            
+            td_tot = p.t + (rand(N_its,1)-0.5)*p.st;
+            vec_rt = vec_rt + td_tot;
+            
+            vec_correct = vec_correct==1;
+            
+            cdf_ups = ksdensity(vec_rt(vec_correct),lt,'Support','Positive','function','cdf');
+            cdf_dow = ksdensity(vec_rt(not(vec_correct)),lt,'Support','Positive','function','cdf');
+            p_ups = sum(vec_correct)/length(vec_correct);
+            p_dow = 1-p_ups;
+            %this is already handled at the moment.
+            
+            cdf_ups = cdf_ups*p_ups;
+            cdf_dow = cdf_dow*p_dow;
+            %
+            pdf_ups = diff(cdf_ups)/dt;
+            pdf_dow = diff(cdf_dow)/dt;
+            rt = (lt(1:end-1)+lt(2:end))*0.5;
+        end
+        
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,dx)
             %
             dt = lt(2)-lt(1);
             f = 10;%not sure what the consequence of shrinking this is
             xmax = p.a + f*sqrt(dt)*p.s;
             xmin = 0 - f*sqrt(dt)*p.s;
-
+            
             xz = [xmax:-dx:xmin]';
             xvm_probe = repmat(xz',length(xz),1)';
             xvm_prev = repmat(xz',length(xz),1);
             
             %modification for conflict
-%             za = (p.z*p.a);
-%defined so that p.zc = 1 is the max conflict bias you can have (with z =
-%0.5)
+            %             za = (p.z*p.a);
+            %defined so that p.zc = 1 is the max conflict bias you can have (with z =
+            %0.5)
             z = p.z - 0.5*(2*p.c-1)*p.zc;
             za = (z)*p.a;
-
+            
             [~,zeroStateIx] = min(abs(xz-za));
             if (p.sz <= 1e-3)
                 x0 = zeros(length(xz),1);
@@ -107,9 +172,9 @@ classdef ddm_def_conflict < ddm_def
                 for ix_t = 2:N_t
                     %modification for conflict here.
                     xvm_expect = xvm_prev + v*(...
-                    1+p.c*(p.b)*lt(ix_t-1)...
-                    )*dt;
-
+                        1+p.c*(p.b)*lt(ix_t-1)...
+                        )*dt;
+                    
                     A = (1/sqrt(2*pi*(sig^2)))*exp(-((xvm_probe - xvm_expect).^2)/(2*(sig^2)));
                     An = A./repmat(sum(A,1),length(xz),1);
                     An(isnan(An))=0;
@@ -141,191 +206,6 @@ classdef ddm_def_conflict < ddm_def
             rt = 0.5*(lt(1:end-1)+lt(2:end));
         end
         
-
-        
-        function [vec_rt,vec_correct,x,td_tot,lt] = ddm_pdf_bru_core(p,lt,N_its)
-            %%
-            dt = lt(2)-lt(1);
-            T = lt(end)+dt;
-            maxIterations = floor(T/dt);
-            if (length(lt)-1)~=maxIterations,error('Messed up time code');end
-            %%
-            %modification for conflict
-            z = p.z - 0.5*(2*p.c-1)*p.zc;
-            x0 = z*p.a;
-            x0_trial = (rand(N_its,1)-0.5)*(p.sz) + x0;%n.b. this one is uniform.
-            x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
-            
-            %modification for conflict
-            V = repmat((p.v + p.sv*randn(N_its,1)),1,maxIterations);
-            CB = repmat(p.c*p.b*lt,1,maxIterations);
-            x_drift = V*(1+CB)*dt;
-            %%
-            x = nan(N_its,maxIterations);
-            x(:,1) = x0_trial;
-            for ix_t = 2:maxIterations
-                %need to check this before it gets used:
-                x(:,ix_t) = x(:,ix_t-1) + x_noise(:,ix_t) + x_drift(:,ix_t);
-            end
-            %%
-            x_threshold = +p.a;
-            [~,x_upper]=sort(x>x_threshold,2,'descend');% should the sign here be the same????
-            x_upper=x_upper(:,1);
-            x_upper(x_upper==1) = nan;
-            
-            x_threshold = 0;
-            [~,x_lower]=sort(x<x_threshold,2,'descend');% should the sign here be the same????
-            x_lower=x_lower(:,1);
-            x_lower(x_lower==1) = nan;
-            
-            x_bounds = [x_upper,x_lower];
-            x_bounds = gather(x_bounds);
-            [ix_time,vec_correct] = nanmin(x_bounds,[],2);
-            ix_time(isnan(ix_time)) = length(lt);%not sure if this is best way to deal with problem...
-            vec_rt = lt(ix_time)';
-            % don't think the time shift can change winner/loser so do it here.
-            
-            td_tot = p.t + (rand(N_its,1)-0.5)*p.st;
-            vec_rt = vec_rt + td_tot;
-            
-            vec_correct = vec_correct==1;
-        end
-        
-%         function  [pdf_dow,pdf_ups,t_math,cdf_dow,cdf_ups] = ddm_pdfX(p,dt,T,ddx)
-%             %
-%             
-%             % %n.b. a multiplication by p.th could stabilise
-%             x0 = (-(2*p.c-1)*p.xb);
-%             %
-%             linspace_t = 0:dt:T-dt;
-%             t_math = linspace_t(1:end-1)+dt/2;
-%             %
-%             xmax = 1.25*p.a+0.2*p.s + p.s;
-%             xmin = -xmax;
-%             dx = (xmax-xmin)/ddx;%n.b. if you change the resolution here (100) - then you need to recompile the mex
-%             xz = [xmax:-dx:xmin]';
-%             xvm_probe = repmat(xz',length(xz),1)';
-%             xvm_prev = repmat(xz',length(xz),1);
-%             % This  has to be different...
-%             [~,zeroStateIx] = min(abs(xz-(x0)));
-%             if p.sx == 0
-%                 z0 = zeros(length(xz),1);
-%                 z0(zeroStateIx,1) = 1;
-%             else
-%                 error('not sure if should be gaussian or uniform');
-%                 %     	z0 = normpdf(xz,xz(zeroStateIx),p.sx);
-%                 z0 = unifpdf(xz,xz(zeroStateIx)-p.s_x0,xz(zeroStateIx)+p.sx);
-%                 z0 = z0/sum(z0);
-%             end
-%             %
-%             sig = p.s*sqrt(dt);
-%             N_t = length(linspace_t);
-%             % CORE
-%             pMat = zeros(length(xz),N_t);
-%             %
-%             zn = z0*p.v;
-%             pMat(:,1) = zn;
-%             %
-%             for ix_t = 2:N_t
-%                 xvm_expect = xvm_prev + p.v*(...
-%                     1+p.c*(p.b)*t_math(ix_t-1)...
-%                     )*dt;
-%                 A = (1/sqrt(2*pi*(sig^2)))*exp(-((xvm_probe - xvm_expect).^2)/(2*(sig^2)));
-%                 An = A./repmat(sum(A,1),length(xz),1);
-%                 An(isnan(An))=0;
-%                 
-%                 An(:,xz>p.a) = 0;
-%                 e = eye(sum(xz>p.a));
-%                 An(1:length(e),1:length(e)) = e;
-%                 An(:,xz<-p.a) = 0;
-%                 e = eye(sum(xz<-p.a));
-%                 An(end-length(e)+1:end,end-length(e)+1:end) = e;
-%                 
-%                 zn = An*zn;
-%                 pMat(:,ix_t) = zn;
-%             end
-%             
-%             cdf_ups = sum(pMat(xz>+p.a,:));
-%             cdf_dow = sum(pMat(xz<-p.a,:));
-%             %
-%             td0_vec = find((t_math>(p.t)-p.st)&(t_math<(p.t)+p.st));
-%             if length(td0_vec)<=1
-%                 ix_t0_shift = round((p.t)/dt);
-%                 cdf_ups = circshift(cdf_ups,ix_t0_shift);
-%                 cdf_ups(1:ix_t0_shift) = 0;
-%                 cdf_dow = circshift(cdf_dow,ix_t0_shift);
-%                 cdf_dow(1:ix_t0_shift) = 0;
-%             else
-%                 N_vec_c_td = length(td0_vec);
-%                 cdf_ups_mats = repmat(cdf_ups,N_vec_c_td,1)/N_vec_c_td;
-%                 cdf_dow_mats = repmat(cdf_dow,N_vec_c_td,1)/N_vec_c_td;
-%                 
-%                 for ix_td0_vec = 1:length(td0_vec)
-%                     ix_t0_shift = td0_vec(ix_td0_vec);
-%                     cdf_ups_mats(ix_td0_vec,:) = circshift(cdf_ups_mats(ix_td0_vec,:),ix_t0_shift);
-%                     cdf_ups_mats(ix_td0_vec,1:ix_t0_shift) = 0;
-%                     cdf_dow_mats(ix_td0_vec,:) = circshift(cdf_dow_mats(ix_td0_vec,:),ix_t0_shift);
-%                     cdf_dow_mats(ix_td0_vec,1:ix_t0_shift) = 0;
-%                 end
-%                 cdf_ups = sum(cdf_ups_mats,1);
-%                 cdf_dow = sum(cdf_dow_mats,1);
-%                 
-%             end
-%             
-%             cdf_ups_end = cdf_ups(end);
-%             cdf_dow_end = cdf_dow(end);
-%             cdf_ups = cdf_ups/(cdf_ups_end+cdf_dow_end);
-%             cdf_dow = cdf_dow/(cdf_ups_end+cdf_dow_end);
-%             %
-%             pdf_ups = diff(cdf_ups)/dt;
-%             pdf_dow = diff(cdf_dow)/dt;
-%         end
-%         
-%         function [vec_rt,vec_correct,x,td_tot] = ddm_bru_coreX(p,dt,T,N_its)
-%             
-%             %%
-%             linspace_t = 0:dt:T-dt;
-%             t_math = linspace_t(1:end-1)+dt/2;
-%             %%
-%             maxIterations = floor(T/dt);
-%             if length(linspace_t)~=maxIterations,error('Messed up time code');end
-%             %%
-%             x0 = (-(2*p.c-1)*p.xb);
-%             x0_trial = 2*(rand(N_its,1)-0.5)*(p.sx) + x0;%n.b. this one is uniform.
-%             x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
-%             x_drift = repmat(p.v*(1+p.c*p.b*t_math)*dt,1,maxIterations);
-%             %%
-%             x = nan(N_its,maxIterations);
-%             x(:,1) = x0_trial;
-%             
-%             for ix_t = 2:maxIterations
-%                 %need to check this before it gets used:
-%                 error('Mistake in specification of x_drift (wrong dimensions)');
-%                 x(:,ix_t) = x(:,ix_t-1) + x_noise(:,ix_t) + x_drift(:,ix_t);
-%             end
-%             %%
-%             x_threshold = +a;
-%             [~,x_upper]=sort(x>x_threshold,2,'descend');% should the sign here be the same????
-%             x_upper=x_upper(:,1);
-%             x_upper(x_upper==1) = nan;
-%             
-%             x_threshold = -a;
-%             [~,x_lower]=sort(x<x_threshold,2,'descend');% should the sign here be the same????
-%             x_lower=x_lower(:,1);
-%             x_lower(x_lower==1) = nan;
-%             
-%             x_bounds = [x_upper,x_lower];
-%             x_bounds = gather(x_bounds);
-%             [ix_time,vec_correct] = nanmin(x_bounds,[],2);
-%             ix_time(isnan(ix_time)) = length(linspace_t);%not sure if this is best way to deal with problem...
-%             vec_rt = linspace_t(ix_time)';
-%             % don't think the time shift can change winner/loser so do it here.
-%             
-%             td_tot = p.t + 2*(rand(N_its,1)-0.5)*p.st;
-%             vec_rt = vec_rt + td_tot;
-%             
-%             vec_correct = vec_correct==1;
-%         end
     end
 end
 
