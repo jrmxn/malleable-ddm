@@ -358,7 +358,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             %             p_mat.c = obj.data.stim_conflict;
         end
         
-        function [nll_app,aic_app,aicc_app,bic_app] = ddm_cost_pdf_nll(obj,x,p)
+        function [nll_app,aic_app,aicc_app,bic_app,ll_vec] = ddm_cost_pdf_nll(obj,x,p)
             if not(isempty(x))
                 p = obj.px2p(obj.s.xl,p,x);
             end
@@ -399,6 +399,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     p_cw = cdf_cw(end);
                     pRT_g_cr_x_p_cr = pdf_cr(ix_cr)'*p_cr;
                     pRT_g_cw_x_p_cw = pdf_cw(ix_cw)'*p_cw;
+
                 end
                 
                 p_RT_and_accuracy(case_right&case_config&not(case_nan)) = pRT_g_cr_x_p_cr;
@@ -408,7 +409,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             p_RT_and_accuracy(isnan(p_RT_and_accuracy)) = [];
             p_RT_and_accuracy(p_RT_and_accuracy == 0) = 1e-32;%not great
             
-            ll_app = sum(log(p_RT_and_accuracy));
+            ll_vec = log(p_RT_and_accuracy);
+            ll_app = sum(ll_vec);
             %     if isnan(ll_app)||isinf(ll_app),error('non scallr ll');end
             if isnan(ll_app),ll_app=-inf;end
             k = length(obj.s.fit_n)+1;%number of free params + 1 for noise
@@ -525,8 +527,12 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pdf_ups = arrayfun(@(x) h_pdf(x),+rt);
             pdf_dow = arrayfun(@(x) h_pdf(x),-rt);
             
+            
             cdf_ups = cumtrapz(rt, pdf_ups);
             cdf_dow = cumtrapz(rt, pdf_dow);
+            cdf_norm = cdf_ups(end)+cdf_dow(end);
+            cdf_ups = cdf_ups/cdf_norm;
+            cdf_dow = cdf_dow/cdf_norm;
             
         end
         
@@ -560,7 +566,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             dt = lt(2)-lt(1);
             T = lt(end)+dt;
             maxIterations = floor(T/dt);
-            if (length(lt)-1)~=maxIterations,error('Messed up time code');end
+%             if (length(lt)-1)~=maxIterations,error('Messed up time code');end
+            if (length(lt))~=maxIterations,error('Messed up time code');end
             %%
             x0 = p.z*p.a;
             x0_trial = (rand(N_its,1)-0.5)*(p.sz) + x0;%n.b. this one is uniform.
