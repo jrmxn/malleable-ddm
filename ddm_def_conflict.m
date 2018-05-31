@@ -7,6 +7,7 @@ classdef ddm_def_conflict < ddm_def
         function obj = ddm_def_conflict
             %light initialisation so functions can be used easily
             obj.modelclass = 'conflict';
+            obj.path_data = 'testing.csv';
         end
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
@@ -51,7 +52,7 @@ classdef ddm_def_conflict < ddm_def
         
         function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_bru(p,lt,N_its)
             
-                        rt = (lt(1:end-1)+lt(2:end))*0.5;
+            rt = (lt(1:end-1)+lt(2:end))*0.5;
 
             dt = lt(2)-lt(1);
             T = lt(end)+dt;
