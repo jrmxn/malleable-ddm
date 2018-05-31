@@ -295,7 +295,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
         end
         
-        function f_savepath = ddm_save(obj,f_path)
+        function f_savepath = ddm_get_save_path(obj, f_path)
             if not(exist('f_path','var')==1),f_path = fullfile('sim',obj.modelclass);end
             f_name = sprintf('%s_%s_%s_%s%s.mat',...
                 obj.subject,...
@@ -305,6 +305,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 obj.extra_string);
             if not(exist(f_path,'dir')==7),mkdir(f_path);end
             f_savepath = fullfile(f_path,f_name);
+        end
+        function f_savepath = ddm_save(obj, f_path)
+            f_savepath = ddm_get_save_path(obj, f_path);
             save(f_savepath,'obj');
         end
         
@@ -608,8 +611,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             %
             dt = lt(2)-lt(1);
             f = obj.s.x_bound_scale;%not sure what the consequence of shrinking this is
-%             (f.p.a+sqrt(f.s.dt)*f.p.s*5*2)/f.s.dx
-%probably there is a better way to deal with edges...
+            %             (f.p.a+sqrt(f.s.dt)*f.p.s*5*2)/f.s.dx
+            %probably there is a better way to deal with edges...
             xmax = p.a + f*sqrt(dt)*p.s;
             xmin = 0 - f*sqrt(dt)*p.s;
             
