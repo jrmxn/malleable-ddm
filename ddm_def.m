@@ -297,6 +297,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         function f_savepath = ddm_get_save_path(obj, f_path)
             if not(exist('f_path','var')==1),f_path = fullfile('sim',obj.modelclass);end
+            if isempty(f_path),f_path = fullfile('sim',obj.modelclass);end
             f_name = sprintf('%s_%s_%s_%s%s.mat',...
                 obj.subject,...
                 ddm_def.debi_model(obj.id_model,'de','st'),...
@@ -307,6 +308,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             f_savepath = fullfile(f_path,f_name);
         end
         function f_savepath = ddm_save(obj, f_path)
+            if not(exist('f_path','var')==1),f_path = '';end
             f_savepath = ddm_get_save_path(obj, f_path);
             save(f_savepath,'obj');
         end
