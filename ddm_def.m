@@ -65,7 +65,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             obj.s.dt = 1e-3;
             %             obj.s.ddx = 100;%no longer used
             obj.s.dx = 0.01;%0.01 about = ddx = 100
-            obj.s.x_bound_scale = 6;
+%             obj.s.x_bound_scale = 6;
             obj.s.T = 5;%this could be set dynamically based on closed form
             obj.s.nits = 25000;
             %             obj.s.inittype = 'random';
@@ -612,7 +612,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,dx)
             %
             dt = lt(2)-lt(1);
-            f = obj.s.x_bound_scale;%not sure what the consequence of shrinking this is
+            f = 5;%f = obj.s.x_bound_scale;%not sure what the consequence of shrinking this is
             %             (f.p.a+sqrt(f.s.dt)*f.p.s*5*2)/f.s.dx
             %probably there is a better way to deal with edges...
             xmax = p.a + f*sqrt(dt)*p.s;

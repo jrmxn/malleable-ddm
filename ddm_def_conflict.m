@@ -115,7 +115,7 @@ classdef ddm_def_conflict < ddm_def
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,dx)
             %
             dt = lt(2)-lt(1);
-            f = obj.s.x_bound_scale;%not sure what the consequence of shrinking this is
+            f = 5;%obj.s.x_bound_scale;%not sure what the consequence of shrinking this is
             xmax = p.a + f*sqrt(dt)*p.s;
             xmin = 0 - f*sqrt(dt)*p.s;
             
