@@ -7,7 +7,7 @@ classdef ddm_def_base < ddm_def
         function obj = ddm_def_base
             %light initialisation so functions can be used easily
             obj.modelclass = 'base';
-            obj.path_data = fullfile('testing','testing.csv');
+            obj.path_data = fullfile('testing.csv');
         end
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
