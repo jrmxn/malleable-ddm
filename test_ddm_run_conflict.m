@@ -4,10 +4,10 @@ clear;
 f_path_data = 'testing.csv';
 n_subs = 21;
 f_savepath = cell(1,n_subs);
-for ix_sub = 1:n_subs
-    subject = sprintf('sub%02d',ix_sub);
+for ix_sub = 19:n_subs
     clear sr;
     sr = ddm_def_conflict;
+    sr.subject = sprintf('sub%02d',ix_sub);
     mk = sr.ddm_get_instance('keyr');
     %%
     id_model = sr.debi_model(0,'de','bi');
@@ -26,8 +26,8 @@ for ix_sub = 1:n_subs
     id_search(mk.st) = 1;
     id_search = sr.debi_model(id_search,'bi','de');
     
-    sr.subject = subject;
-    sr.path_data = f_path_data;
+%     sr.subject = subject;
+%     sr.path_data = f_path_data;
     
     sr.ddm_init(id_model,id_search);
     sr.ddm_pdf = @(a,b) sr.ddm_prt_ana(a,b);

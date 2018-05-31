@@ -1,11 +1,11 @@
 clear;
 f_path_data = 'testing.csv';
-for ix_fit_type = [2,3]
+for ix_fit_type = [1,2,3]
     for ix_sub = 1:21
         
         clear sr;
-        subject = sprintf('sub%02d',ix_sub);
         sr = ddm_def_base;
+        sr.subject = sprintf('sub%02d',ix_sub);
         mk = sr.ddm_get_instance('keyr');
         %%
         id_model = sr.debi_model(0,'de','bi');
@@ -28,12 +28,7 @@ for ix_fit_type = [2,3]
         id_search(mk.sz) = 1;
         
         id_search = sr.debi_model(id_search,'bi','de');
-        
-        sr.subject = subject;
-        sr.path_data = f_path_data;
-        
-        
-        
+
         sr.ddm_init(id_model,id_search);
         if ix_fit_type == 1
             sr.modelclass = 'base_ana';

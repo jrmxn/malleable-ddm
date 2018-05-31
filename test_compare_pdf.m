@@ -1,18 +1,19 @@
 clear all;
 %%
-sr = load('sim/base_ana/sub01_x4079616x_x1966080x_base_ana.mat');sr = sr.obj;
+sr = load('sim/conflict/sub01_x4141056x_x0995328x_conflict.mat');sr = sr.obj;
 p = sr.fit(end).p;
 sr.s.dt = 1e-3;
-sr.s.nits = 10e3;
+sr.s.nits = 100e3;
 sr.s.dx = 5e-3;
 
 lt = [0:1e-3:2];
-p.a = p.a;
+p.c = 1;
+% p.a = p.a;
 % p.v = 2;
-p.st = 0.0;
-p.sv = 0.0;
-p.sz = 0.0;
-p.z = 0.5;
+% p.st = 0.0;
+% p.sv = 0.0;
+% p.sz = 0.0;
+% p.z = 0.5;
 tic
 [pdf_cw_bru,pdf_cr_bru,rt_bru,cdf_dow,cdf_ups] = sr.ddm_pdf_bru(p,lt,sr.s.nits);
 toc
