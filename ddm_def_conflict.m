@@ -51,8 +51,8 @@ classdef ddm_def_conflict < ddm_def
         
         function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_bru(p,lt,N_its)
             
-            dt = lt(2)-lt(1);
-            
+                        rt = (lt(1:end-1)+lt(2:end))*0.5;
+
             dt = lt(2)-lt(1);
             T = lt(end)+dt;
             maxIterations = floor(T/dt);
@@ -66,8 +66,8 @@ classdef ddm_def_conflict < ddm_def
             
             %modification for conflict
             V = repmat((p.v + p.sv*randn(N_its,1)),1,maxIterations);
-            CB = repmat(p.c*p.b*lt,N_its,1);
-            x_drift = V*(1+CB)*dt;
+            CB = repmat(p.c*p.b*rt,N_its,1);
+            x_drift = V.*(1+CB)*dt;
             %%
             x = nan(N_its,maxIterations);
             x(:,1) = x0_trial;
@@ -109,7 +109,6 @@ classdef ddm_def_conflict < ddm_def
             %
             pdf_ups = diff(cdf_ups)/dt;
             pdf_dow = diff(cdf_dow)/dt;
-            rt = (lt(1:end-1)+lt(2:end))*0.5;
         end
         
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,dx)
