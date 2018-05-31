@@ -8,9 +8,9 @@ classdef ddm_def_sz < ddm_def
     methods
         function obj = ddm_def_sz(obj)
             %ovewrite model class property
-            obj.modelclass = 'sz_base';
-obj.path_data = fullfile('testing','testing_sz.csv');
-obj.info.difficulties = [-5:5];
+            obj.modelclass = 'sz';
+            obj.path_data = fullfile('testing','testing_sz.csv');
+            obj.info.difficulties = [-5:5];
         end
         
         function get_data(obj)
@@ -30,7 +30,7 @@ obj.info.difficulties = [-5:5];
             
             %reduce the data (less confusing...)... but annoying for
             %inheritance.
-%            obj.data = obj.data(:,{'choice','rt','difficulty'});
+            %            obj.data = obj.data(:,{'choice','rt','difficulty'});
         end
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
@@ -116,9 +116,9 @@ obj.info.difficulties = [-5:5];
             pubound_.(p_) = 1;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
-
+            
             diffi_val = unique(obj.info.difficulties);
-            diffi_str = arrayfun(@(x) ddm_def_sz.diff2drift(x),diffi_val,'UniformOutput',false);        
+            diffi_str = arrayfun(@(x) ddm_def_sz.diff2drift(x),diffi_val,'UniformOutput',false);
             for ix_v = 1:length(diffi_str)
                 p_ = diffi_str{ix_v};
                 modelkey_var{ix} = (p_);ix = ix+1;
@@ -144,13 +144,13 @@ obj.info.difficulties = [-5:5];
             pdf_ = arrayfun(@(x) h_pdf(x),+rt);
             
         end
-
+        
         function diffi_str = diff2drift(diffi_val)
             diffi_str = sprintf('v+%01d',diffi_val);
-%             diff10_str = arrayfun(@(x) sprintf('v+%01d',x),diff10_val,'UniformOutput',false);
+            %             diff10_str = arrayfun(@(x) sprintf('v+%01d',x),diff10_val,'UniformOutput',false);
             diffi_str = strrep(diffi_str,'+-','m');
             diffi_str = strrep(diffi_str,'+','p');
             diffi_str = strrep(diffi_str,'vp0','vz');
-end
+        end
     end
 end
