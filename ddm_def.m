@@ -87,12 +87,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 get_data(obj);
             end
             
-            %             if not(length(obj.fit)==obj.fit_ix)
-            %                 error('We already have an initialised fit here');
-            %             end
-            %             obj.fit_ix = obj.fit_ix + 1;
-            
-            if fit_ix_==1
+            %if first model fit for this object or we want to reinitialise
+            if (fit_ix_==1)||obj.s.reinit
                 %p is defined from a full set of defaults/random init
                 init_p_full_random = obj.ddm_get_instance(['init_' 'random']);
                 init_p_full_default = obj.ddm_get_instance(['init_' 'default']);
