@@ -55,8 +55,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             
             obj.id_model = id_model;
             obj.id_search = id_search;
-            if not(isnumeric(id_model)&(numel(id_model)==1)),error('Bad id_model');end
-            if not(isnumeric(id_search)&(numel(id_search)==1)),error('Bad id_model');end
+            err_str = 'Bad model spec - check you did not mix up id_model and id_search';
+            if not(isnumeric(id_model)&(numel(id_model)==1)),error(err_str);end
+            if not(isnumeric(id_search)&(numel(id_search)==1)),error(err_str);end
             
             obj.s.fit_n = sum(ddm_def.debi_model(obj.id_search,'de','bi'));
             obj.s.minAlgo = 'nll';
@@ -64,6 +65,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             obj.s.dt = 1e-3;
             %             obj.s.ddx = 100;%no longer used
             obj.s.dx = 0.01;%0.01 about = ddx = 100
+            obj.s.x_bound_scale = 6;
             obj.s.T = 5;%this could be set dynamically based on closed form
             obj.s.nits = 25000;
             %             obj.s.inittype = 'random';
@@ -356,7 +358,6 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
             p_RT_and_accuracy = nan(height(obj.data),1);
             
-            %while I like this, it takes 50ms
             p_mat = struct2table(repmat(p,height(obj.data),1));
             
             %Add trial-trial stimulus dependencies (e.g. coherence, conflict etc.)
@@ -606,7 +607,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,dx)
             %
             dt = lt(2)-lt(1);
-            f = 10;%not sure what the consequence of shrinking this is
+            f = obj.s.x_bound_scale;%not sure what the consequence of shrinking this is
+%             (f.p.a+sqrt(f.s.dt)*f.p.s*5*2)/f.s.dx
+%probably there is a better way to deal with edges...
             xmax = p.a + f*sqrt(dt)*p.s;
             xmin = 0 - f*sqrt(dt)*p.s;
             
@@ -814,7 +817,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 p = ddm_def.ftt_01w(tt, w, err);% #get f(t|0,1,w)
                 
                 %# convert to f(t|v,a,w)
-                op =  p*exp(-v*a*w -(v^2)*x/2)/((a^2));
+                op =  p*exp(-v*a*w -(v^2)*x/2)/(a^2);
             end
         end
         
