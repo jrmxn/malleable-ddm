@@ -25,10 +25,23 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             %light initialisation so functions can be used easily
             obj.modelclass = '';
             obj.modelKey = ddm_get_instance(obj, 'keyf');
-            obj.info.version = sprintf('0.0.1');
+            obj.info.version = sprintf('0.0.2');
             obj.info.date = datetime;
+            
+            try
+                %oly writes lowest in the hierarchy, but it's a start
+                [ST, I] = dbstack('-completenames', 1);
+                obj.info.code = fileread(ST(I).file);
+            catch
+                warning('Failed to archive code.');
+            end
         end
         
+        function ddm_writecode(obj,filename)
+            fid = fopen(filename,'wt');
+            fprintf(fid, '%s',obj.info.code);
+            fclose(fid);
+        end
         function ddm_init(obj, id_model,id_search)
             %Set the simulation settings (s), and the optimisation settings
             %(opt). id_model and if_fit (which are decimals,
@@ -38,7 +51,6 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             % fit parameters as strings in a cell.
             obj.id_model = id_model;
             obj.id_search = id_search;
-            
             if not(isnumeric(id_model)&(numel(id_model)==1)),error('Bad id_model');end
             if not(isnumeric(id_search)&(numel(id_search)==1)),error('Bad id_model');end
             
