@@ -9,8 +9,8 @@ classdef ddm_def_sz < ddm_def
         function obj = ddm_def_sz(obj)
             %ovewrite model class property
             obj.modelclass = 'sz_base';
-            obj.path_data = 'testing_sz.csv';
-            obj.info.difficulties = [-5:5];
+obj.path_data = fullfile('testing','testing_sz.csv');
+obj.info.difficulties = [-5:5];
         end
         
         function get_data(obj)

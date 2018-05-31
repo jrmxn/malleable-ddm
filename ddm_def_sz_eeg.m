@@ -9,7 +9,7 @@ classdef ddm_def_sz_eeg < ddm_def_sz
         function obj = ddm_def_sz_eeg(obj)
             %ovewrite model class property
             obj.modelclass = 'sz_eeg';
-            obj.path_data = 'testing_sz.csv';
+            obj.path_data = fullfile('testing','testing_sz.csv');
             obj.info.difficulties = [-5:5];
         end
         

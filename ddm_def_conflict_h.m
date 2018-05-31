@@ -9,7 +9,7 @@ classdef ddm_def_conflict_h < ddm_def_conflict
         function obj = ddm_def_conflict_h(obj)
             %ovewrite model class property
             obj.modelclass = 'conflict_h';
-            obj.path_data = 'testing.csv';
+            obj.path_data = fullfile('testing','testing.csv');
         end
         
         function get_data(obj)
