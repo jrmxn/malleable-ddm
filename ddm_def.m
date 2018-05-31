@@ -549,7 +549,43 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_bru(p,lt,N_its)
             
             dt = lt(2)-lt(1);
-            [vec_rt,vec_correct,~,~,lt] = ddm_def.ddm_pdf_bru_core(p,lt,N_its);
+            T = lt(end)+dt;
+            maxIterations = floor(T/dt);
+            if (length(lt)-1)~=maxIterations,error('Messed up time code');end
+            %%
+            x0 = p.z*p.a;
+            x0_trial = (rand(N_its,1)-0.5)*(p.sz) + x0;%n.b. this one is uniform.
+            x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
+            x_drift = repmat((p.v + p.sv*randn(N_its,1))*dt,1,maxIterations);
+            %%
+            x = nan(N_its,maxIterations);
+            x(:,1) = x0_trial;
+            for ix_t = 2:maxIterations
+                %need to check this before it gets used:
+                x(:,ix_t) = x(:,ix_t-1) + x_noise(:,ix_t) + x_drift(:,ix_t);
+            end
+            %%
+            x_threshold = +p.a;
+            [~,x_upper]=sort(x>x_threshold,2,'descend');% should the sign here be the same????
+            x_upper=x_upper(:,1);
+            x_upper(x_upper==1) = nan;
+            
+            x_threshold = 0;
+            [~,x_lower]=sort(x<x_threshold,2,'descend');% should the sign here be the same????
+            x_lower=x_lower(:,1);
+            x_lower(x_lower==1) = nan;
+            
+            x_bounds = [x_upper,x_lower];
+            x_bounds = gather(x_bounds);
+            [ix_time,vec_correct] = nanmin(x_bounds,[],2);
+            ix_time(isnan(ix_time)) = length(lt);%not sure if this is best way to deal with problem...
+            vec_rt = lt(ix_time)';
+            % don't think the time shift can change winner/loser so do it here.
+            
+            td_tot = p.t + (rand(N_its,1)-0.5)*p.st;
+            vec_rt = vec_rt + td_tot;
+            
+            vec_correct = vec_correct==1;
             
             cdf_ups = ksdensity(vec_rt(vec_correct),lt,'Support','Positive','function','cdf');
             cdf_dow = ksdensity(vec_rt(not(vec_correct)),lt,'Support','Positive','function','cdf');
@@ -647,50 +683,6 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pdf_ups = diff(cdf_ups)/dt;
             pdf_dow = diff(cdf_dow)/dt;
             rt = 0.5*(lt(1:end-1)+lt(2:end));
-        end
-        
-        
-        
-        function [vec_rt,vec_correct,x,td_tot,lt] = ddm_pdf_bru_core(p,lt,N_its)
-            %%
-            dt = lt(2)-lt(1);
-            T = lt(end)+dt;
-            maxIterations = floor(T/dt);
-            if (length(lt)-1)~=maxIterations,error('Messed up time code');end
-            %%
-            x0 = p.z*p.a;
-            x0_trial = (rand(N_its,1)-0.5)*(p.sz) + x0;%n.b. this one is uniform.
-            x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
-            x_drift = repmat((p.v + p.sv*randn(N_its,1))*dt,1,maxIterations);
-            %%
-            x = nan(N_its,maxIterations);
-            x(:,1) = x0_trial;
-            for ix_t = 2:maxIterations
-                %need to check this before it gets used:
-                x(:,ix_t) = x(:,ix_t-1) + x_noise(:,ix_t) + x_drift(:,ix_t);
-            end
-            %%
-            x_threshold = +p.a;
-            [~,x_upper]=sort(x>x_threshold,2,'descend');% should the sign here be the same????
-            x_upper=x_upper(:,1);
-            x_upper(x_upper==1) = nan;
-            
-            x_threshold = 0;
-            [~,x_lower]=sort(x<x_threshold,2,'descend');% should the sign here be the same????
-            x_lower=x_lower(:,1);
-            x_lower(x_lower==1) = nan;
-            
-            x_bounds = [x_upper,x_lower];
-            x_bounds = gather(x_bounds);
-            [ix_time,vec_correct] = nanmin(x_bounds,[],2);
-            ix_time(isnan(ix_time)) = length(lt);%not sure if this is best way to deal with problem...
-            vec_rt = lt(ix_time)';
-            % don't think the time shift can change winner/loser so do it here.
-            
-            td_tot = p.t + (rand(N_its,1)-0.5)*p.st;
-            vec_rt = vec_rt + td_tot;
-            
-            vec_correct = vec_correct==1;
         end
         
         function [t_ups,t_dow,p_ups,p_dow] = ddm_pdf2rt(cdf_ups,cdf_dow,t_math,N,varargin)
