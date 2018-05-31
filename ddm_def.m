@@ -58,7 +58,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             if not(isnumeric(id_model)&(numel(id_model)==1)),error('Bad id_model');end
             if not(isnumeric(id_search)&(numel(id_search)==1)),error('Bad id_model');end
             
-            obj.s.fit_n = sum(obj.debi_model(obj.id_search,'de','bi'));
+            obj.s.fit_n = sum(ddm_def.debi_model(obj.id_search,'de','bi'));
             obj.s.minAlgo = 'nll';
             obj.s.reinit = false;
             obj.s.dt = 1e-3;
@@ -72,7 +72,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             %             obj.ddm_pdf = @(a,b,c) obj.ddm_pdf_bru(a,b,c,obj.s.nits);
             %             obj.ddm_pdf = @(a,b,c) obj.ddm_pdf_trm(a,b,c,obj.s.dx);
             
-            id_search_index  = find(obj.debi_model(obj.id_search,'de','bi'));
+            id_search_index  = find(ddm_def.debi_model(obj.id_search,'de','bi'));
             
             % Set the parameters over which to optimise from modelType spec
             co = 1;
@@ -110,8 +110,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 init_p_full_default = obj.ddm_get_instance(['init_' 'default']);
                 % and now we need to reduce it to match the specific model
                 % configuration we are testing.
-                id_model_index = find(obj.debi_model(obj.id_model,'de','bi'));
-                id_search_index  = find(obj.debi_model(obj.id_search,'de','bi'));
+                id_model_index = find(ddm_def.debi_model(obj.id_model,'de','bi'));
+                id_search_index  = find(ddm_def.debi_model(obj.id_search,'de','bi'));
                 
                 for ix_parameter_cell = 1:length(obj.modelKey)
                     parameter_string = obj.modelKey{ix_parameter_cell};
@@ -297,8 +297,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             if not(exist('f_path','var')==1),f_path = fullfile('sim',obj.modelclass);end
             f_name = sprintf('%s_%s_%s_%s%s.mat',...
                 obj.subject,...
-                obj.debi_model(obj.id_model,'de','st'),...
-                obj.debi_model(obj.id_search,'de','st'),...
+                ddm_def.debi_model(obj.id_model,'de','st'),...
+                ddm_def.debi_model(obj.id_search,'de','st'),...
                 obj.modelclass,...
                 obj.extra_string);
             if not(exist(f_path,'dir')==7),mkdir(f_path);end
@@ -316,18 +316,6 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             [t_ups,t_dow,p_ups,p_dow] = obj.ddm_pdf2rt(cdf_ups,cdf_dow,t,N);
         end
         
-        function op = debi_model(obj, ip, ip_type, op_req)
-            if strcmpi(ip_type,'de')&&strcmpi(op_req,'bi')
-                op = de2bi(ip,22,'left-msb');
-            elseif strcmpi(ip_type,'bi')&&strcmpi(op_req,'de')
-                op = bi2de(ip,'left-msb');
-            elseif strcmpi(ip_type,'bi')&&strcmpi(op_req,'st')
-                tempX = bi2de(ip,'left-msb');
-                op = ['x' sprintf('%07d',tempX) 'x'];
-            elseif strcmpi(ip_type,'de')&&strcmpi(op_req,'st')
-                op = ['x' sprintf('%07d',ip) 'x'];
-            end
-        end
         
         
         function outputArg = ddm_get_instance(obj, deftype)
@@ -753,6 +741,22 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
         end
         
+        function op = debi_model(ip, ip_type, op_req)
+            
+            max_n_param = 33;
+            %core_char_length = max decimal length of binary number
+            %             core_char_length = length(num2str(bi2de(ones(1,max_n_param),'left-msb')));
+            if strcmpi(ip_type,'de')&&strcmpi(op_req,'bi')
+                op = de2bi(ip,max_n_param,'left-msb');
+            elseif strcmpi(ip_type,'bi')&&strcmpi(op_req,'de')
+                op = bi2de(ip,'left-msb');
+            elseif strcmpi(ip_type,'bi')&&strcmpi(op_req,'st')
+                tempX = bi2de(ip,'left-msb');
+                op = ['x' sprintf('%010d',tempX) 'x'];
+            elseif strcmpi(ip_type,'de')&&strcmpi(op_req,'st')
+                op = ['x' sprintf('%010d',ip) 'x'];
+            end
+        end
         
         %
         function p = ftt_01w(tt,w,err)
