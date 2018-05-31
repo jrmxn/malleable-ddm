@@ -24,7 +24,6 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function obj = ddm_def
             %light initialisation so functions can be used easily
             obj.modelclass = '';
-            obj.modelKey = ddm_get_instance(obj, 'keyf');
             obj.info.version = sprintf('0.0.2');
             obj.info.date = datetime;
             
@@ -49,6 +48,11 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             % parameters) get set.
             % additionally id_search gets translated into xl which holds the
             % fit parameters as strings in a cell.
+            if isempty(obj.data)
+                get_data(obj);
+            end
+            obj.modelKey = ddm_get_instance(obj, 'keyf');
+            
             obj.id_model = id_model;
             obj.id_search = id_search;
             if not(isnumeric(id_model)&(numel(id_model)==1)),error('Bad id_model');end
@@ -275,15 +279,17 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 end
                 case_subject = strcmpi(data_.subject,obj.subject);
                 
-                if iscell(data_.choice)
-                    error('Maybe you have a string in choice field?');
-                end
+                %                 if iscell(data_.choice)
+                %                     error('Maybe you have a string in choice field?');
+                %                 end
                 data_ = data_(case_subject,:);
                 if not(height(data_)>0),error('Bad subject spec?');end
                 
                 
                 
                 obj.data = data_;
+            else
+                error('No subject specified');
             end
         end
         
