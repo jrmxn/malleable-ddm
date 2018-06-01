@@ -55,7 +55,7 @@ classdef ddm_def_sz_eeg < ddm_def_sz
     
     methods (Static)
         
-        function  pdf_ = ddm_prt_ana(p, rt, eeg_mod)
+        function  [pdf_,p_cr] = ddm_prt_ana(p, rt, eeg_mod)
             err = 1e-8;
             
             diffi_str = ddm_def_sz.diff2drift(p.difficulty);
@@ -69,6 +69,7 @@ classdef ddm_def_sz_eeg < ddm_def_sz
                     px.(ch_str) * px.(sprintf('%s_%s',p_str,ch_str));
             end
             
+            p_cr = ddm_def.hddm_prob_ub(px.v,px.a,px.z);
             h_pdf = @(x) ddm_def.hddm_pdf_full(x,px.v,px.sv,px.a,px.z,px.sz,px.t,px.st,err);
             pdf_ = arrayfun(@(x) h_pdf(x),+rt);
             

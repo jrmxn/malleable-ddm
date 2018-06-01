@@ -136,11 +136,13 @@ classdef ddm_def_sz < ddm_def
     
     methods (Static)
         
-        function  pdf_ = ddm_prt_ana(p,rt)
+        function  [pdf_,p_cr] = ddm_prt_ana(p,rt)
             err = 1e-8;
             diffi_str = ddm_def_sz.diff2drift(p.difficulty);
-            v = p.(diffi_str);
-            h_pdf = @(x) ddm_def.hddm_pdf_full(x,v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
+            px = p;
+            px.v = p.(diffi_str);
+            p_cr = ddm_def.hddm_prob_ub(px.v,px.a,px.z);
+            h_pdf = @(x) ddm_def.hddm_pdf_full(x,px.v,px.sv,px.a,px.z,px.sz,px.t,px.st,err);
             pdf_ = arrayfun(@(x) h_pdf(x),+rt);
             
         end
