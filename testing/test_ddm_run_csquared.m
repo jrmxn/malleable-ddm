@@ -46,8 +46,8 @@ for ix_sub = 1:length(vec_sub)
 %         sr.ddm_pdf = @(a,b) sr.ddm_pdf_trm(a,b,sr.s.dx);
 %         sr.s.reinit = false;
 %         sr.ddm_fit;
+sr.ddm_save;
     end
-    sr.ddm_save;
 end
 %% full model
 for ix_sub = 1:length(vec_sub)
@@ -89,8 +89,9 @@ for ix_sub = 1:length(vec_sub)
         sr.opt.MaxIter = sr.opt.MaxIter*3;
         sr.ddm_fit;
         sr.ddm_fit;
+        sr.ddm_save;
     end
-    sr.ddm_save;
+    
 end
 % for ix_sub = 1:length(vec_sub)
 %     clearvars -except f_savepath;

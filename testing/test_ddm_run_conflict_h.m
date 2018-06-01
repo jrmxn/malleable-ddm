@@ -75,8 +75,9 @@ for ix_sub = 1:length(vec_sub_oi)
         sr.opt.MaxIter = 2500;
         sr.ddm_fit;
         sr.ddm_fit;
+        sr.ddm_save;
     end
-    sr.ddm_save;
+    
 end
 %%
 fprintf('bch and bchn\n');
@@ -114,8 +115,9 @@ for ix_sub = 1:length(vec_sub_oi)
         sr.opt.MaxIter = 2500;
         sr.ddm_fit;
         sr.ddm_fit;
+        sr.ddm_save;
     end
-    sr.ddm_save;
+    
 end
 
 %%
@@ -154,7 +156,8 @@ for ix_sub = 1:length(vec_sub_oi)
         sr.opt.MaxIter = 2500;
         sr.ddm_fit;
         sr.ddm_fit;
+        sr.ddm_save;
     end
-    sr.ddm_save;
+    
 end
 rmpath('..')
