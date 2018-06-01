@@ -38,12 +38,12 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 warning('Failed to archive code.');
             end
         end
-%         function set.subject(obj,sub)
-% for some reason, set methods don't play nice with minimisation
-% (patternsearch)
-%             fprintf('Setting subject name to %s\n',sub);
-%             obj.subject = sub;
-%         end
+        %         function set.subject(obj,sub)
+        % for some reason, set methods don't play nice with minimisation
+        % (patternsearch)
+        %             fprintf('Setting subject name to %s\n',sub);
+        %             obj.subject = sub;
+        %         end
         function ddm_writecode(obj,filename)
             fid = fopen(filename,'wt');
             fprintf(fid, '%s',obj.info.code);
@@ -73,7 +73,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             obj.s.dt = 1e-3;
             %             obj.s.ddx = 100;%no longer used
             obj.s.dx = 0.01;%0.01 about = ddx = 100
-%             obj.s.x_bound_scale = 6;
+            %             obj.s.x_bound_scale = 6;
             obj.s.T = 5;%this could be set dynamically based on closed form
             obj.s.nits = 25000;
             %             obj.s.inittype = 'random';
@@ -442,7 +442,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     p_cw = cdf_cw(end);
                     pRT_g_cr_x_p_cr = pdf_cr(ix_cr)'*p_cr;
                     pRT_g_cw_x_p_cw = pdf_cw(ix_cw)'*p_cw;
-
+                    
                 end
                 
                 p_RT_and_accuracy(case_right&case_config&not(case_nan)) = pRT_g_cr_x_p_cr;
@@ -571,12 +571,12 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pdf_ups = arrayfun(@(x) h_pdf(x),+rt);
             pdf_dow = arrayfun(@(x) h_pdf(x),-rt);
             
-
+            
             cdf_ups = cumtrapz(rt, pdf_ups);
             cdf_dow = cumtrapz(rt, pdf_dow);
             p_ups = ddm_def.hddm_prob_ub(p.v,p.a,p.z);
-%           Rescale the cdf to avoid numerical issues with the integration
-%           assumes that max(rt) really has made the tail to go zero.
+            %           Rescale the cdf to avoid numerical issues with the integration
+            %           assumes that max(rt) really has made the tail to go zero.
             cdf_ups = (cdf_ups/cdf_ups(end))*p_ups;
             cdf_dow = (cdf_dow/cdf_dow(end))*(1-p_ups);
             
@@ -613,7 +613,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             dt = lt(2)-lt(1);
             T = lt(end)+dt;
             maxIterations = floor(T/dt);
-%             if (length(lt)-1)~=maxIterations,error('Messed up time code');end
+            %             if (length(lt)-1)~=maxIterations,error('Messed up time code');end
             if (length(lt))~=maxIterations,error('Messed up time code');end
             %%
             x0 = p.z*p.a;
@@ -804,7 +804,17 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         function op = debi_model(ip, ip_type, op_req)
             
-            max_n_param = 33;
+            max_n_param = 39;
+            
+            if strcmpi(ip_type,'de')
+                if ip>((2^(max_n_param+1))-1),error('bad de debi use');end
+            elseif strcmpi(ip_type,'bi')
+                if length(ip)>max_n_param,error('bad bi debi use');end
+            end
+            %                         if strcmpi(op_req,'de')
+            %             elseif strcmpi(op_req,'bi')
+            %             end
+            
             %core_char_length = max decimal length of binary number
             %             core_char_length = length(num2str(bi2de(ones(1,max_n_param),'left-msb')));
             if strcmpi(ip_type,'de')&&strcmpi(op_req,'bi')
@@ -816,6 +826,12 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 op = ['x' sprintf('%010d',tempX) 'x'];
             elseif strcmpi(ip_type,'de')&&strcmpi(op_req,'st')
                 op = ['x' sprintf('%010d',ip) 'x'];
+            end
+            
+            if strcmpi(op_req,'de')
+                if op>((2^(max_n_param+1))-1),error('bad de debi use');end
+            elseif strcmpi(op_req,'bi')
+                if length(op)>max_n_param,error('bad bi debi use');end
             end
         end
         

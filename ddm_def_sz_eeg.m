@@ -41,15 +41,19 @@ classdef ddm_def_sz_eeg < ddm_def_sz
             ix = length(modelkey_var)+1;
             
             % we can put eeg based noise on...
-            p_ = 't_pre_alpha_O';
+            name_channel = {'pre_alpha_O','pre_ssvep_O','pre_random_O','pre_mlfr_C','pre_theta_FC'};
+
+            for ix_name_channel = 1:length(name_channel)
+            p_ = sprintf('%s_%s','t',name_channel{ix_name_channel});
             [modelkey_var{ix},pran_.(p_),pdef_.(p_),plbound_.(p_),pubound_.(p_),prior_.(p_)] ...
                 = def_eeg_params(p_, 0.1);ix = ix+1;
-            p_ = 'z_pre_alpha_O';
+            p_ = sprintf('%s_%s','z',name_channel{ix_name_channel});
             [modelkey_var{ix},pran_.(p_),pdef_.(p_),plbound_.(p_),pubound_.(p_),prior_.(p_)] ...
                 = def_eeg_params(p_, 0.1);ix = ix+1;
-            p_ = 'v_pre_alpha_O';
+            p_ = sprintf('%s_%s','v',name_channel{ix_name_channel});
             [modelkey_var{ix},pran_.(p_),pdef_.(p_),plbound_.(p_),pubound_.(p_),prior_.(p_)] ...
                 = def_eeg_params(p_, 0.1);ix = ix+1;
+            end
         end
     end
     
