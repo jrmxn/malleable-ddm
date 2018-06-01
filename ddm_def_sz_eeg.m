@@ -11,6 +11,7 @@ classdef ddm_def_sz_eeg < ddm_def_sz
             obj.modelclass = 'sz_eeg';
             obj.path_data = fullfile('testing','testing_sz.csv');
             obj.info.difficulties = [-5:5];
+            obj.info.name_channel = {'pre_alpha_O','pre_ssvep_O','pre_random_O','pre_mlfr_C','pre_theta_FC'};
         end
         
         function get_data(obj)
@@ -20,7 +21,10 @@ classdef ddm_def_sz_eeg < ddm_def_sz
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
             p_mat = ddm_cost_add_stim_dependencies@ddm_def(obj,p_mat);
             p_mat.difficulty = obj.data.difficulty;
-            p_mat.pre_alpha_O = obj.data.pre_alpha_O;
+            for ix_name_channel = 1:length(obj.info.name_channel)
+                p_mat.(obj.info.name_channel{ix_name_channel}) = ...
+                    obj.data.(obj.info.name_channel{ix_name_channel});
+            end
         end
         
     end
@@ -41,16 +45,14 @@ classdef ddm_def_sz_eeg < ddm_def_sz
             ix = length(modelkey_var)+1;
             
             % we can put eeg based noise on...
-            name_channel = {'pre_alpha_O','pre_ssvep_O','pre_random_O','pre_mlfr_C','pre_theta_FC'};
-
-            for ix_name_channel = 1:length(name_channel)
-            p_ = sprintf('%s_%s','t',name_channel{ix_name_channel});
+            for ix_name_channel = 1:length(obj.info.name_channel)
+            p_ = sprintf('%s_%s','t',obj.info.name_channel{ix_name_channel});
             [modelkey_var{ix},pran_.(p_),pdef_.(p_),plbound_.(p_),pubound_.(p_),prior_.(p_)] ...
                 = def_eeg_params(p_, 0.1);ix = ix+1;
-            p_ = sprintf('%s_%s','z',name_channel{ix_name_channel});
+            p_ = sprintf('%s_%s','z',obj.info.name_channel{ix_name_channel});
             [modelkey_var{ix},pran_.(p_),pdef_.(p_),plbound_.(p_),pubound_.(p_),prior_.(p_)] ...
                 = def_eeg_params(p_, 0.1);ix = ix+1;
-            p_ = sprintf('%s_%s','v',name_channel{ix_name_channel});
+            p_ = sprintf('%s_%s','v',obj.info.name_channel{ix_name_channel});
             [modelkey_var{ix},pran_.(p_),pdef_.(p_),plbound_.(p_),pubound_.(p_),prior_.(p_)] ...
                 = def_eeg_params(p_, 0.1);ix = ix+1;
             end
@@ -61,14 +63,15 @@ classdef ddm_def_sz_eeg < ddm_def_sz
         
         function  [pdf_,p_cr] = ddm_prt_ana(p, rt, eeg_mod)
             err = 1e-8;
-            
             diffi_str = ddm_def_sz.diff2drift(p.difficulty);
             px = p;
+            
             %n.b. the re-assignment to v here is also critical for v_eeg interactions
             px.v = px.(diffi_str);
             for ix_eeg_mod = 1:length(eeg_mod)
                 ch_str = eeg_mod(ix_eeg_mod).channel;
                 p_str = eeg_mod(ix_eeg_mod).param;
+                if not(isfield(px,ch_str)),error('Are the stim dependencies set? Is %s in your data?',ch_str);end
                 px.(p_str) = px.(p_str) + ...
                     px.(ch_str) * px.(sprintf('%s_%s',p_str,ch_str));
             end
