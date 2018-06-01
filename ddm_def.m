@@ -389,8 +389,13 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 t_cw = obj.data.rt(case_wrong&case_config&not(case_nan));
                 
                 if contains(func2str(obj.ddm_pdf),'ddm_prt_ana')
-                    pRT_g_cr_x_p_cr = obj.ddm_pdf(px,+t_cr);
-                    pRT_g_cw_x_p_cw = obj.ddm_pdf(px,-t_cw);
+                    
+                    [pRT_g_cr, p_cr] = obj.ddm_pdf(px,+t_cr);
+                    [pRT_g_cw, ~] = obj.ddm_pdf(px,-t_cw);
+                    pRT_g_cr_x_p_cr = pRT_g_cr*p_cr;
+                    pRT_g_cw_x_p_cw = pRT_g_cw*(1-p_cr);
+                    
+                    
                 else
                     ix_cr = round(t_cr/obj.s.dt);
                     ix_cw = round(t_cw/obj.s.dt);
@@ -512,9 +517,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
     end
     methods (Static)
         
-        function  pdf_ = ddm_prt_ana(p,rt)
+        function  [pdf_,p_cr] = ddm_prt_ana(p,rt)
             err = 1e-8;
-            
+            %it's a surprise to me that other terms don't matter here...
+            p_cr = ddm_def.hddm_prob_ub(p.v,p.a,p.z);
             h_pdf = @(x) ddm_def.hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
             pdf_ = arrayfun(@(x) h_pdf(x),+rt);
             
@@ -527,12 +533,15 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pdf_ups = arrayfun(@(x) h_pdf(x),+rt);
             pdf_dow = arrayfun(@(x) h_pdf(x),-rt);
             
-            
+
             cdf_ups = cumtrapz(rt, pdf_ups);
             cdf_dow = cumtrapz(rt, pdf_dow);
-            cdf_norm = cdf_ups(end)+cdf_dow(end);
-            cdf_ups = cdf_ups/cdf_norm;
-            cdf_dow = cdf_dow/cdf_norm;
+            p_ups = ddm_def.hddm_prob_ub(p.v,p.a,p.z);
+%           Rescale the cdf to avoid numerical issues with the integration
+%           assumes that max(rt) really has made the tail to go zero.
+            cdf_ups = (cdf_ups/cdf_ups(end))*p_ups;
+            cdf_dow = (cdf_dow/cdf_dow(end))*(1-p_ups);
+            
             
         end
         
