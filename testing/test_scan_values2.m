@@ -1,3 +1,5 @@
+clear;
+addpath('..');
 N = 8;
 X = nan(N,8,3);
 for ix_sub = 1:N

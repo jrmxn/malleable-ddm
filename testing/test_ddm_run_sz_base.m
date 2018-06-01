@@ -1,5 +1,5 @@
 clear;
-addpath('/hdd/Local/gitprojects/ext-ddm/');
+addpath('..');
 [sub_data_struc,sub_cell,sz] = base_def_subjects('subjects','ALL');
 path_data = fullfile(pwd,'testing_sz.csv');
 %%

@@ -1,4 +1,5 @@
 clear;
+addpath('..');
 sub_cell{1} = 'AHLAJ';sz(1) = true;
 % sub_cell{2} = 'QQYAK';sz(2) = false;
 %%

@@ -1,3 +1,6 @@
+clear;
+addpath('..');
+
 t = 3;
 N_sub = 20;
 X = nan(N_sub,2);

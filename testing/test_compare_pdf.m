@@ -1,13 +1,14 @@
-clear all;
+clear;
+addpath('..');
 %%
-sr = load('sim/conflict/sub01_x4141056x_x0995328x_conflict.mat');sr = sr.obj;
+sr = load('sim/base_ana_prt/sub01_x8489271296x_x2046820352x_base_ana_prt.mat');sr = sr.obj;
 p = sr.fit(end).p;
 sr.s.dt = 1e-3;
 sr.s.nits = 100e3;
 sr.s.dx = 5e-3;
 
-lt = [0:1e-3:2];
-p.c = 1;
+lt = [0:1e-3:5];
+% p.c = 1;
 % p.a = p.a;
 % p.v = 2;
 % p.st = 0.0;

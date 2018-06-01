@@ -1,5 +1,5 @@
 clear;
-
+addpath('..');
 
 niter = 1000;
 % f_path_data = 'testing.csv';

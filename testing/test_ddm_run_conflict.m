@@ -1,10 +1,10 @@
 clear;
-
+addpath('..');
 
 f_path_data = 'testing.csv';
 n_subs = 21;
 f_savepath = cell(1,n_subs);
-for ix_sub = 19:n_subs
+for ix_sub = 1:n_subs
     clear sr;
     sr = ddm_def_conflict;
     sr.subject = sprintf('sub%02d',ix_sub);

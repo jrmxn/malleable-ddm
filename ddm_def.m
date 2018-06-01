@@ -24,7 +24,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function obj = ddm_def
             %light initialisation so functions can be used easily
             obj.modelclass = '';
-            obj.info.version = sprintf('0.0.2');
+            obj.info.version = sprintf('0.0.3');
             obj.info.date = datetime;
             
             try
@@ -629,9 +629,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,dx)
             %
             dt = lt(2)-lt(1);
-            f = 5;%f = obj.s.x_bound_scale;%not sure what the consequence of shrinking this is
-            %             (f.p.a+sqrt(f.s.dt)*f.p.s*5*2)/f.s.dx
-            %probably there is a better way to deal with edges...
+            f = 5;%increasing this helps (as does decreasing dx)
             xmax = p.a + f*sqrt(dt)*p.s;
             xmin = 0 - f*sqrt(dt)*p.s;
             
