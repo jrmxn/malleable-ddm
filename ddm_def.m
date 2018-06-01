@@ -27,7 +27,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function obj = ddm_def
             %light initialisation so functions can be used easily
             obj.modelclass = '';
-            obj.info.version = sprintf('0.0.4');
+            obj.info.version = sprintf('0.0.5');
             obj.info.date = datetime;
             
             try
