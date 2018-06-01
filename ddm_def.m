@@ -104,9 +104,18 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             if isempty(obj.data)
                 get_data(obj);
             end
-            
-            %if first model fit for this object or we want to reinitialise
+            if isstruct(fit_ix_)
+                %in the special case where we are inserting a p structure
+                %here to initialise...
+                init_p_insert = fit_ix_;
+                fit_ix_ = 1;%assume
+            else
+                %in normal cases make sure insert structure is never a
+                %match with parameter names
+                init_p_insert.x_no_match_x = 0;
+            end
             if (fit_ix_==1)||obj.s.reinit
+                %if first model fit for this object or we want to reinitialise
                 %p is defined from a full set of defaults/random init
                 init_p_full_random = obj.ddm_get_instance(['init_' 'random']);
                 init_p_full_default = obj.ddm_get_instance(['init_' 'default']);
@@ -117,7 +126,11 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 
                 for ix_parameter_cell = 1:length(obj.modelKey)
                     parameter_string = obj.modelKey{ix_parameter_cell};
-                    if any(strcmp(parameter_string,obj.modelKey(id_search_index)))
+                    if any(strcmp(parameter_string,fieldnames(init_p_insert)))
+                        %if we want to insert a p-value structure, then
+                        %the inserted p-values get priority
+                        init_p_reduced.(parameter_string) = init_p_insert.(parameter_string);
+                    elseif any(strcmp(parameter_string,obj.modelKey(id_search_index)))
                         %if we are going to try to optimise this parameter
                         %then get it from a distribution
                         init_p_reduced.(parameter_string) = init_p_full_random.(parameter_string);
