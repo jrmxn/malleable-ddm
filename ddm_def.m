@@ -19,12 +19,15 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         mcmc = [];
         ddm_pdf = [];
     end
+    properties (Transient = true)
+        objp = [];
+    end
     
     methods
         function obj = ddm_def
             %light initialisation so functions can be used easily
             obj.modelclass = '';
-            obj.info.version = sprintf('0.0.3');
+            obj.info.version = sprintf('0.0.4');
             obj.info.date = datetime;
             
             try
@@ -35,7 +38,12 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 warning('Failed to archive code.');
             end
         end
-        
+%         function set.subject(obj,sub)
+% for some reason, set methods don't play nice with minimisation
+% (patternsearch)
+%             fprintf('Setting subject name to %s\n',sub);
+%             obj.subject = sub;
+%         end
         function ddm_writecode(obj,filename)
             fid = fopen(filename,'wt');
             fprintf(fid, '%s',obj.info.code);
@@ -84,7 +92,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
             
             obj.opt.TolX = 1e-5;
-            obj.opt.MaxIter = 1000;
+            obj.opt.MaxIter = 2500;
             obj.opt.parallelsearch = true;
             obj.opt.ps_AccelerateMesh = true;%should only do if smooth
             obj.opt.computeAlgo = 'PS';
@@ -309,6 +317,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
         end
         
+        
         function f_savepath = ddm_get_save_path(obj, f_path)
             if not(exist('f_path','var')==1),f_path = fullfile('sim',obj.modelclass);end
             if isempty(f_path),f_path = fullfile('sim',obj.modelclass);end
@@ -324,7 +333,23 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function f_savepath = ddm_save(obj, f_path)
             if not(exist('f_path','var')==1),f_path = '';end
             f_savepath = ddm_get_save_path(obj, f_path);
+            
             save(f_savepath,'obj');
+        end
+        
+        function [f_savepath,obj_] = ddm_save_properties(obj, f_path)
+            if not(exist('f_path','var')==1),f_path = '';end
+            f_savepath = ddm_get_save_path(obj, f_path);
+            f_savepath = strrep(f_savepath,'.mat','_properties.mat');
+            
+            prop_names = properties(obj);
+            prop_names(strcmpi(prop_names,'objp')) = [];
+            obj.objp = [];
+            for ix_prop_names = 1:length(prop_names)
+                obj.objp.(prop_names{ix_prop_names}) = obj.(prop_names{ix_prop_names});
+            end
+            obj_ = obj.objp;
+            save(f_savepath,'obj_');
         end
         
         function [t_ups,t_dow,p_ups,p_dow] = ddm_data_draw(obj,p,N)
