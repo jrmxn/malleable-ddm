@@ -40,7 +40,7 @@ classdef ddm_def_conflict < ddm_def
             pd_hn = makedist('beta','a',g_alpha,'b',g_beta);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
-            plbound_.(p_) = 0;
+            plbound_.(p_) = -1;
             pubound_.(p_) = 1;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             

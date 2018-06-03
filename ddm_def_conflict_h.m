@@ -38,7 +38,7 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
-            plbound_.(p_) = 0;
+            plbound_.(p_) = -6;
             pubound_.(p_) = 6;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
@@ -48,7 +48,7 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
-            plbound_.(p_) = 0;
+            plbound_.(p_) = -6;
             pubound_.(p_) = 6;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
@@ -58,7 +58,7 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
-            plbound_.(p_) = 0;
+            plbound_.(p_) = -3;
             pubound_.(p_) = 3;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
@@ -68,7 +68,7 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
-            plbound_.(p_) = 0;
+            plbound_.(p_) = -3;
             pubound_.(p_) = 3;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
@@ -78,7 +78,7 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
-            plbound_.(p_) = 0;
+            plbound_.(p_) = -3;
             pubound_.(p_) = 3;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
@@ -88,8 +88,8 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
-            plbound_.(p_) = 0;
-            pubound_.(p_) = 1;
+            plbound_.(p_) = -3;
+            pubound_.(p_) = 3;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
         end

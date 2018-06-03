@@ -23,14 +23,14 @@ classdef ddm_def_csquared < ddm_def
             [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ddm_def_instance@ddm_def(obj);
             ix = length(modelkey_var)+1;
             
-                        p_ = 'zc';
+            p_ = 'zc';
             modelkey_var{ix} = (p_);ix = ix+1;
             g_alpha = 1;
             g_beta = 3;
             pd_hn = makedist('beta','a',g_alpha,'b',g_beta);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
-            plbound_.(p_) = 0;
+            plbound_.(p_) = -1;
             pubound_.(p_) = 1;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
@@ -44,7 +44,7 @@ classdef ddm_def_csquared < ddm_def
             pubound_.(p_) = 20;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
-p_ = 'b2';
+            p_ = 'b2';
             modelkey_var{ix} = (p_);ix = ix+1;
             g_sd = 5;
             pd_hn = makedist('HalfNormal','mu',0,'sigma',g_sd);
