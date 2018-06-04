@@ -13,6 +13,11 @@ classdef ddm_def_sz < ddm_def
             obj.info.difficulties = [-5:5];
         end
         
+        function p_mat = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell)
+            [p_mat, sr_full] = aux_gather@ddm_def(obj,f_path,id_model_de,id_search_de,sub_cell);
+            p_mat.issz = arrayfun(@(ix) sr_full(ix).info.issz,[1:height(p_mat)])';
+        end
+        
         function get_data(obj)
             get_data@ddm_def(obj);
             
