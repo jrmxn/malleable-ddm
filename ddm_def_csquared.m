@@ -54,6 +54,15 @@ classdef ddm_def_csquared < ddm_def
             pubound_.(p_) = 20;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
+            p_ = 'b3';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_sd = 5;
+            pd_hn = makedist('HalfNormal','mu',0,'sigma',g_sd);
+            pran_.(p_) = pd_hn.random;
+            pdef_.(p_) = 0.0;
+            plbound_.(p_) = 0;
+            pubound_.(p_) = 20;
+            prior_.(p_) = @(x) pdf(pd_hn,x);
         end
         
         
@@ -62,6 +71,9 @@ classdef ddm_def_csquared < ddm_def
         
         function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_bru(p,lt,N_its)
             
+%             if not(p.sz==0)
+%                 error('Model not defined for sz not equal to zero');
+%             end
             rt = (lt(1:end-1)+lt(2:end))*0.5;
 
             dt = lt(2)-lt(1);
@@ -71,20 +83,28 @@ classdef ddm_def_csquared < ddm_def
             %%
             %modification for conflict
             z = p.z - 0.5*(2*p.c-1)*p.zc;
-            x0 = z*p.a;
-            x0_trial = (rand(N_its,1)-0.5)*(p.sz) + x0;%n.b. this one is uniform.
+            za = z*p.a;
+            za_trial = (rand(N_its,1)-0.5)*(p.sz) + za;%n.b. this one is uniform.
             x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
             
             %modification for conflict
             V = repmat((p.v + p.sv*randn(N_its,1)),1,maxIterations);
             CB = repmat(p.c*p.b1*rt,N_its,1);
-            x_drift = V.*(1+CB)*dt;
+%             x_drift = V
             %%
             x = nan(N_its,maxIterations);
-            x(:,1) = x0_trial;
+            x(:,1) = za_trial;
             for ix_t = 2:maxIterations
-                x(:,ix_t) = x(:,ix_t-1) + x_noise(:,ix_t) + x_drift(:,ix_t) + ...
-                    p.b2*x(:,ix_t-1).*x(:,ix_t-1);
+                y2 = (2*p.c-1)*(x(:,ix_t-1)-za_trial);
+                y3 = y2./(1+exp(-10*y2));
+                dx = x_noise(:,ix_t) + V(:,ix_t).*( ...
+                    +1 ...
+                    +CB(:,ix_t) ...
+                    +p.b2*y2 ...
+                    +p.b3*y3 ...
+                    )*dt;
+                x(:,ix_t) = x(:,ix_t-1) + dx;
+%                     
             end
             %%
             x_threshold = +p.a;
@@ -124,6 +144,7 @@ classdef ddm_def_csquared < ddm_def
         
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,dx)
             %
+            
             dt = lt(2)-lt(1);
             f = 5;%obj.s.x_bound_scale;%not sure what the consequence of shrinking this is
             xmax = p.a + f*sqrt(dt)*p.s;
@@ -145,6 +166,7 @@ classdef ddm_def_csquared < ddm_def
                 x0 = zeros(length(xz),1);
                 x0(zeroStateIx,1) = 1;
             else
+                error('Model not defined for sz not equal to zero');
                 x0 = unifpdf(xz,xz(zeroStateIx)-p.sz/2,xz(zeroStateIx)+p.sz/2);
                 x0 = x0/sum(x0);
             end
@@ -181,10 +203,13 @@ classdef ddm_def_csquared < ddm_def
                 pMat(:,1) = zn;
                 for ix_t = 2:N_t
                     %modification for conflict here.
+                    y2 = (2*p.c-1)*(xz-za);
+                    y3 = y2./(1+exp(-10*y2));
                     xvm_expect = xvm_prev + v*(...
                         1 ...
-                        +p.c*(p.b1)*lt(ix_t-1)...
-                        +p.b2*(xz.^2)...
+                        +p.b1*p.c*lt(ix_t-1)...
+                        +p.b2*y2...
+                        +p.b3*y3...
                         )*dt;
                     
                     A = (1/sqrt(2*pi*(sig^2)))*exp(-((xvm_probe - xvm_expect).^2)/(2*(sig^2)));
