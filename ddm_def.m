@@ -50,7 +50,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             fclose(fid);
         end
         
-        function p_mat = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell)
+        function [p_mat,sr_full] = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell)
             obj.id_model = id_model_de;
             obj.id_search = id_search_de;
             obj.subject = '**';
@@ -58,13 +58,14 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             f = fullfile(f_path,[f_base,'.mat']);
             vec_empty = [];
             p_mat = struct([]);clear p_mat;%annoying to init properly.
+            sr_full = struct([]);clear sr_full;%annoying to init properly.
             for ix_sub = 1:length(sub_cell)
                 f_ = strrep(f,'**',sub_cell{ix_sub});
                 
                 try
                     sr = load(f_);
                     sr = sr.obj;
-                    
+                    sr_full(ix_sub) = sr;
                     [~,ix_min] = min([sr.fit.nll]);
                     sr_fit = sr.fit(ix_min);
                     p = sr_fit.p;
