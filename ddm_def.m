@@ -56,8 +56,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             obj.subject = '**';
             [~,f_base] = fileparts(obj.ddm_get_save_path);
             f = fullfile(f_path,[f_base,'.mat']);
-            loop_started = false;
             vec_empty = [];
+            p_mat = struct([]);clear p_mat;%annoying to init properly.
             for ix_sub = 1:length(sub_cell)
                 f_ = strrep(f,'**',sub_cell{ix_sub});
                 
@@ -71,17 +71,15 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     p.nll = sr_fit.nll;
                     p.aic = sr_fit.aic;
                     p.subject = sr.subject;
-                    %     p.issz = sr.info.issz;
-                    %                 if ix_sub == 1
-                    p_mat(ix_sub) = p;%struct2table(p);
-                    %                 else
-                    %                     p_mat = [struct2table(p)];
-                    %                 end
+                    p_mat(ix_sub) = p;
                     ix_non_empty = ix_sub;
                 catch
                     vec_empty = [vec_empty,ix_sub];
                     warning('Missing %s',f_);
                 end
+            end
+            if not(exist('p_mat','var')==1)
+                error('No files found');
             end
             % fill in the blanks...
             p_proto = p_mat(ix_non_empty);
