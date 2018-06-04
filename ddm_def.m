@@ -49,6 +49,61 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             fprintf(fid, '%s',obj.info.code);
             fclose(fid);
         end
+        
+        function p_mat = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell)
+            obj.id_model = id_model_de;
+            obj.id_search = id_search_de;
+            obj.subject = '**';
+            [~,f_base] = fileparts(obj.ddm_get_save_path);
+            f = fullfile(f_path,[f_base,'.mat']);
+            loop_started = false;
+            vec_empty = [];
+            for ix_sub = 1:length(sub_cell)
+                f_ = strrep(f,'**',sub_cell{ix_sub});
+                
+                try
+                    sr = load(f_);
+                    sr = sr.obj;
+                    
+                    [~,ix_min] = min([sr.fit.nll]);
+                    sr_fit = sr.fit(ix_min);
+                    p = sr_fit.p;
+                    p.nll = sr_fit.nll;
+                    p.aic = sr_fit.aic;
+                    p.subject = sr.subject;
+                    %     p.issz = sr.info.issz;
+                    %                 if ix_sub == 1
+                    p_mat(ix_sub) = p;%struct2table(p);
+                    %                 else
+                    %                     p_mat = [struct2table(p)];
+                    %                 end
+                    ix_non_empty = ix_sub;
+                catch
+                    vec_empty = [vec_empty,ix_sub];
+                    warning('Missing %s',f_);
+                end
+            end
+            % fill in the blanks...
+            p_proto = p_mat(ix_non_empty);
+            for ix_vec_empty = 1:length(vec_empty)
+                p_ = p_mat(vec_empty(ix_vec_empty));
+                vec_fn = fieldnames(p_);
+                for ix_fn = 1:length(vec_fn)
+                    if isnumeric(p_proto.(vec_fn{ix_fn}))
+                        v = nan;
+                    elseif ischar(p_proto.(vec_fn{ix_fn}))
+                        v = '';
+                    else 
+                        error('Undefined case');
+                    end
+                    p_.(vec_fn{ix_fn}) = v;
+                end
+                p_mat(vec_empty(ix_vec_empty)) = p_;
+            end
+            %
+            p_mat = struct2table(p_mat);
+        end
+        
         function ddm_init(obj, id_model,id_search)
             %Set the simulation settings (s), and the optimisation settings
             %(opt). id_model and if_fit (which are decimals,
