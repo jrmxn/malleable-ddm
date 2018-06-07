@@ -70,7 +70,7 @@ classdef ddm_def_csquared < ddm_def
             pd_hn = makedist('HalfNormal','mu',0,'sigma',g_sd);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
-            plbound_.(p_) = -20;
+            plbound_.(p_) = 0;
             pubound_.(p_) = 20;
             prior_.(p_) = @(x) pdf(pd_hn,x);
         end
