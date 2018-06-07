@@ -63,6 +63,16 @@ classdef ddm_def_csquared < ddm_def
             plbound_.(p_) = 0;
             pubound_.(p_) = 20;
             prior_.(p_) = @(x) pdf(pd_hn,x);
+            
+            p_ = 'b4';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_sd = 5;
+            pd_hn = makedist('HalfNormal','mu',0,'sigma',g_sd);
+            pran_.(p_) = pd_hn.random;
+            pdef_.(p_) = 0.0;
+            plbound_.(p_) = -20;
+            pubound_.(p_) = 20;
+            prior_.(p_) = @(x) pdf(pd_hn,x);
         end
         
         
@@ -71,11 +81,11 @@ classdef ddm_def_csquared < ddm_def
         
         function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_bru(p,lt,N_its)
             
-%             if not(p.sz==0)
-%                 error('Model not defined for sz not equal to zero');
-%             end
+            %             if not(p.sz==0)
+            %                 error('Model not defined for sz not equal to zero');
+            %             end
             rt = (lt(1:end-1)+lt(2:end))*0.5;
-
+            
             dt = lt(2)-lt(1);
             T = lt(end)+dt;
             maxIterations = floor(T/dt);
@@ -90,21 +100,23 @@ classdef ddm_def_csquared < ddm_def
             %modification for conflict
             V = repmat((p.v + p.sv*randn(N_its,1)),1,maxIterations);
             CB = repmat(p.c*p.b1*rt,N_its,1);
-%             x_drift = V
+            %             x_drift = V
             %%
             x = nan(N_its,maxIterations);
             x(:,1) = za_trial;
             for ix_t = 2:maxIterations
                 y2 = (2*p.c-1)*(x(:,ix_t-1)-za_trial);
                 y3 = y2./(1+exp(-10*y2));
+                y4 = y3*rt(ix_t);
                 dx = x_noise(:,ix_t) + V(:,ix_t).*( ...
                     +1 ...
                     +CB(:,ix_t) ...
                     +p.b2*y2 ...
                     +p.b3*y3 ...
+                    +p.b4*y4 ...
                     )*dt;
                 x(:,ix_t) = x(:,ix_t-1) + dx;
-%                     
+                %
             end
             %%
             x_threshold = +p.a;
@@ -205,11 +217,13 @@ classdef ddm_def_csquared < ddm_def
                     %modification for conflict here.
                     y2 = (2*p.c-1)*(xz-za);
                     y3 = y2./(1+exp(-10*y2));
+                    y4 = y3*lt(ix_t-1);
                     xvm_expect = xvm_prev + v*(...
                         1 ...
                         +p.b1*p.c*lt(ix_t-1)...
                         +p.b2*y2...
                         +p.b3*y3...
+                        +p.b4*y4...
                         )*dt;
                     
                     A = (1/sqrt(2*pi*(sig^2)))*exp(-((xvm_probe - xvm_expect).^2)/(2*(sig^2)));
