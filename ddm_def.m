@@ -340,7 +340,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             logPfuns = {@(m)logprior(m) @(m)loglike(m)};
             %             logPfuns{1}(minit(:,1))+logPfuns{2}(minit(:,1))
             fprintf('Starting mcmc...\n');
-            [models,logp]=gwmcmc(minit,logPfuns,opt_.mccount,'Parallel',opt_.doParallel,'BurnIn',opt_.BurnIn,'ThinChain',opt_.ThinChain);
+            [models,logp] = gwmcmc(minit,logPfuns,opt_.mccount,'Parallel',...
+                opt_.doParallel,'BurnIn',opt_.BurnIn,'ThinChain',opt_.ThinChain);
             obj.mcmc(obj.fit_ix).models = models;
             obj.mcmc(obj.fit_ix).logp = logp;
             obj.mcmc(obj.fit_ix).opt = opt_;
