@@ -62,7 +62,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             for ix_sub = 1:length(sub_cell)
                 f_ = strrep(f,'**',sub_cell{ix_sub});
                 
-                try
+                if exist(f_,'file') == 2
                     sr = load(f_);
                     sr = sr.obj;
                     sr_full(ix_sub) = sr;
@@ -74,7 +74,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     p.subject = sr.subject;
                     p_mat(ix_sub) = p;
                     ix_non_empty = ix_sub;
-                catch
+                else
                     vec_empty = [vec_empty,ix_sub];
                     warning('Missing %s',f_);
                 end
@@ -82,8 +82,12 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             if not(exist('p_mat','var')==1)
                 error('No files found');
             end
-            % fill in the blanks...
+            % fill in the blanks with nans, ''
+            % get an example of a subject result that we have
             p_proto = p_mat(ix_non_empty);
+            %make sure that p_mat extends to all subjects (even though some
+            %are empty)
+            p_mat(length(sub_cell)+1) = p_proto;p_mat(length(sub_cell)+1) = [];
             for ix_vec_empty = 1:length(vec_empty)
                 p_ = p_mat(vec_empty(ix_vec_empty));
                 vec_fn = fieldnames(p_);
