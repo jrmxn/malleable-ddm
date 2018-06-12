@@ -11,7 +11,7 @@ classdef ddm_def_sz_eeg < ddm_def_sz
             obj.modelclass = 'sz_eeg';
             obj.path_data = fullfile('testing','testing_sz.csv');
             obj.info.difficulties = [-5:5];
-            obj.info.name_channel = {'pre_alpha_O','pre_ssvep_O','pre_random_O','pre_mlfr_C','pre_theta_FC','rt'};
+            obj.info.name_channel = {'pre_alpha_O','pre_ssvep_O','pre_random_O','pre_mlfr_C','pre_theta_FC','nlrt'};
         end
         
         function get_data(obj)
