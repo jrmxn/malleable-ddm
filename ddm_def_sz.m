@@ -22,6 +22,7 @@ classdef ddm_def_sz < ddm_def
                     issz(ix_sub) = sr_full(ix_sub).info.issz;
                 end
             end
+            if all((issz==1)|(issz==0)),issz = logical(issz);end
             p_mat.issz = issz;
             %used to be: (but above deals with missing data)
             %p_mat.issz = arrayfun(@(ix) sr_full(ix).info.issz,[1:height(p_mat)])';
