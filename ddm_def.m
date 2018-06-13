@@ -78,6 +78,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     p.nll = sr_fit.nll;
                     p.aic = sr_fit.aic;
                     p.subject = sr.subject;
+                    p.ll_vec = sr.ll_vec;
                     p_mat(ix_sub) = p;
                     ix_non_empty = ix_sub;
                 else
@@ -267,9 +268,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             obj.fit(fit_ix_).options = minoptions;
             obj.fit(fit_ix_).p = obj.px2p(obj.s.xl,fit_init.p,x);
             
-            [nll_app,aic_app,aicc_app,bic_app] = obj.opt.h_cost([],obj.fit(fit_ix_).p);
+            [nll_app,aic_app,aicc_app,bic_app,ll_vec_app] = obj.opt.h_cost([],obj.fit(fit_ix_).p);
             obj.fit(fit_ix_).nll = nll_app;
             obj.fit(fit_ix_).aic = aic_app;
+            obj.fit(fit_ix_).ll_vec = ll_vec_app;
             obj.fit(fit_ix_).aicc = aicc_app;
             obj.fit(fit_ix_).bic = bic_app;
             
@@ -513,16 +515,15 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 p_RT_and_accuracy(case_right&case_config&not(case_nan)) = pRT_g_cr_x_p_cr;
                 p_RT_and_accuracy(case_wrong&case_config&not(case_nan)) = pRT_g_cw_x_p_cw;
             end
-            
-            p_RT_and_accuracy(isnan(p_RT_and_accuracy)) = [];
             p_RT_and_accuracy(p_RT_and_accuracy == 0) = 1e-32;%not great
             
+
             ll_vec = log(p_RT_and_accuracy);
-            ll_app = sum(ll_vec);
+            ll_app = nansum(ll_vec);%nan are values that are not in condition
             %     if isnan(ll_app)||isinf(ll_app),error('non scallr ll');end
             if isnan(ll_app),ll_app=-inf;end
-            k = obj.s.fit_n+1;%number of free params + 1 for noise
-            n = length(p_RT_and_accuracy);
+            k = obj.s.fit_n+1;%number of free params + 1 for fixed noise
+            n = sum(not(isnan(p_RT_and_accuracy)));
             %prob an issue here with thr fact that some trials are kicked out..
             bic_app = log(n)*k-2*ll_app;
             aic_app = 2*k-2*ll_app;
