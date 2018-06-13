@@ -521,7 +521,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             ll_app = sum(ll_vec);
             %     if isnan(ll_app)||isinf(ll_app),error('non scallr ll');end
             if isnan(ll_app),ll_app=-inf;end
-            k = length(obj.s.fit_n)+1;%number of free params + 1 for noise
+            k = obj.s.fit_n+1;%number of free params + 1 for noise
             n = length(p_RT_and_accuracy);
             %prob an issue here with thr fact that some trials are kicked out..
             bic_app = log(n)*k-2*ll_app;
