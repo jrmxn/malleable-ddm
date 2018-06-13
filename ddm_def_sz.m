@@ -142,14 +142,26 @@ classdef ddm_def_sz < ddm_def
     methods (Static)
         
         function  [pdf_,p_cr] = ddm_prt_ana(p,rt)
-            err = 1e-8;
+            
             diffi_str = ddm_def_sz.diff2drift(p.difficulty);
             px = p;
             px.v = p.(diffi_str);
-            p_cr = ddm_def.hddm_prob_ub(px.v,px.a,px.z);
-            h_pdf = @(x) ddm_def.hddm_pdf_full(x,px.v,px.sv,px.a,px.z,px.sz,px.t,px.st,err);
-            pdf_ = arrayfun(@(x) h_pdf(x),+rt);
             
+            
+            [pdf_, p_cr] = ddm_prt_ana@ddm_def(px,rt);
+            
+%             use parent instead of:
+%             err = 1e-8;
+%             p_cr = ddm_def.hddm_prob_ub(px.v,px.a,px.z);
+%             h_pdf = @(x) ddm_def.hddm_pdf_full(x,px.v,px.sv,px.a,px.z,px.sz,px.t,px.st,err);
+%             pdf_ = arrayfun(@(x) h_pdf(x),+rt);
+        end
+        
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana(p,rt)
+            diffi_str = ddm_def_sz.diff2drift(p.difficulty);
+            px = p;
+            px.v = p.(diffi_str);
+            [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana@ddm_def(px,rt);
         end
         
         function diffi_str = diff2drift(diffi_val)
