@@ -15,7 +15,16 @@ classdef ddm_def_sz < ddm_def
         
         function p_mat = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin)
             [p_mat, sr_full] = aux_gather@ddm_def(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin);
-            p_mat.issz = arrayfun(@(ix) sr_full(ix).info.issz,[1:height(p_mat)])';
+            
+            issz = nan(height(p_mat),1);
+            for ix_sub = 1:height(p_mat)
+                if isfield(sr_full(ix_sub).info,'issz')
+                    issz(ix_sub) = sr_full(ix_sub).info.issz;
+                end
+            end
+            p_mat.issz = issz;
+            %used to be: (but above deals with missing data)
+            %p_mat.issz = arrayfun(@(ix) sr_full(ix).info.issz,[1:height(p_mat)])';
         end
         
         function get_data(obj)
@@ -150,11 +159,11 @@ classdef ddm_def_sz < ddm_def
             
             [pdf_, p_cr] = ddm_prt_ana@ddm_def(px,rt);
             
-%             use parent instead of:
-%             err = 1e-8;
-%             p_cr = ddm_def.hddm_prob_ub(px.v,px.a,px.z);
-%             h_pdf = @(x) ddm_def.hddm_pdf_full(x,px.v,px.sv,px.a,px.z,px.sz,px.t,px.st,err);
-%             pdf_ = arrayfun(@(x) h_pdf(x),+rt);
+            %             use parent instead of:
+            %             err = 1e-8;
+            %             p_cr = ddm_def.hddm_prob_ub(px.v,px.a,px.z);
+            %             h_pdf = @(x) ddm_def.hddm_pdf_full(x,px.v,px.sv,px.a,px.z,px.sz,px.t,px.st,err);
+            %             pdf_ = arrayfun(@(x) h_pdf(x),+rt);
         end
         
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana(p,rt)
