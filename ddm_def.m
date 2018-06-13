@@ -27,7 +27,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function obj = ddm_def
             %light initialisation so functions can be used easily
             obj.modelclass = '';
-            obj.info.version = sprintf('0.0.5');
+            obj.info.version = sprintf('0.0.6');
             obj.info.date = datetime;
             
             try
@@ -50,7 +50,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             fclose(fid);
         end
         
-        function [p_mat,sr_full] = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell)
+        function [p_mat,sr_full] = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin)
             obj.id_model = id_model_de;
             obj.id_search = id_search_de;
             obj.subject = '**';
@@ -66,8 +66,14 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     sr = load(f_);
                     sr = sr.obj;
                     sr_full(ix_sub) = sr;
+                    if strcmpi(minorfin,'min')
                     [~,ix_min] = min([sr.fit.nll]);
                     sr_fit = sr.fit(ix_min);
+                    elseif strcmpi(minorfin,'fin')
+                    sr_fit = sr.fit(end);
+                    else
+                        error('minfin?');
+                    end
                     p = sr_fit.p;
                     p.nll = sr_fit.nll;
                     p.aic = sr_fit.aic;
@@ -555,8 +561,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             [A_shape,B_scale] = obj.gamma_convert(g_mea,g_sd);
             pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
             pdef_.(p_) = 0.0;
-            plbound_.(p_) = -7.5;
-            pubound_.(p_) = 7.5;
+            plbound_.(p_) = -20;
+            pubound_.(p_) = +20;
             prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
             
             p_ = 'a';
@@ -576,7 +582,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
             pdef_.(p_) = 0.25;
             plbound_.(p_) = 0.1;
-            pubound_.(p_) = 0.75;
+            pubound_.(p_) = 1.5;
             prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
             
             p_ = 'st';
@@ -586,7 +592,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pran_.(p_) = unifrnd(g_lo,g_up);
             pdef_.(p_) = 0.0;
             plbound_.(p_) = 0;
-            pubound_.(p_) = 0.5;
+            pubound_.(p_) = 1.0;
             prior_.(p_) = @(x) unifpdf(x,g_lo,g_up);
             
             p_ = 'sv';

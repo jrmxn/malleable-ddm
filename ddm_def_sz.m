@@ -13,8 +13,8 @@ classdef ddm_def_sz < ddm_def
             obj.info.difficulties = [-5:5];
         end
         
-        function p_mat = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell)
-            [p_mat, sr_full] = aux_gather@ddm_def(obj,f_path,id_model_de,id_search_de,sub_cell);
+        function p_mat = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin)
+            [p_mat, sr_full] = aux_gather@ddm_def(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin);
             p_mat.issz = arrayfun(@(ix) sr_full(ix).info.issz,[1:height(p_mat)])';
         end
         
@@ -76,7 +76,7 @@ classdef ddm_def_sz < ddm_def
             [A_shape,B_scale] = obj.gamma_convert(g_mea,g_sd);
             pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
             pdef_.(p_) = 1.0;
-            plbound_.(p_) = 0.1;
+            plbound_.(p_) = 0.05;
             pubound_.(p_) = 7.5;
             prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
             
@@ -87,7 +87,7 @@ classdef ddm_def_sz < ddm_def
             pran_.(p_) = gamrnd(A_shape,B_scale,[1,1]);
             pdef_.(p_) = 0.25;
             plbound_.(p_) = 0.1;
-            pubound_.(p_) = 0.75;
+            pubound_.(p_) = 1.5;
             prior_.(p_) = @(x) gampdf(x,A_shape,B_scale);
             
             p_ = 'st';
@@ -97,7 +97,7 @@ classdef ddm_def_sz < ddm_def
             pran_.(p_) = unifrnd(g_lo,g_up);
             pdef_.(p_) = 0.0;
             plbound_.(p_) = 0;
-            pubound_.(p_) = 0.5;
+            pubound_.(p_) = 1.0;
             prior_.(p_) = @(x) unifpdf(x,g_lo,g_up);
             
             p_ = 'sv';
