@@ -613,12 +613,13 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             p_ = 'sz';
             modelkey_var{ix} = (p_);ix = ix+1;
             g_alpha = 1;
-            g_beta = 3;
+            g_beta = 8;
             pd_hn = makedist('beta','a',g_alpha,'b',g_beta);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
             plbound_.(p_) = 0;
-            pubound_.(p_) = 1;
+            pubound_.(p_) = 0.75;%the real bound is 1... but that's a bit much
+            %esp since generally looks like it's more like 0.01 if anything
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
         end
