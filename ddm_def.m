@@ -77,8 +77,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     p = sr_fit.p;
                     p.nll = sr_fit.nll;
                     p.aic = sr_fit.aic;
+                    %p.ll_vec = sr_fit.ll_vec;
+                    p.n = sum(not(isnan(sr_fit.ll_vec)));
                     p.subject = sr.subject;
-                    p.ll_vec = sr.ll_vec;
                     p_mat(ix_sub) = p;
                     ix_non_empty = ix_sub;
                 else
@@ -272,6 +273,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             obj.fit(fit_ix_).nll = nll_app;
             obj.fit(fit_ix_).aic = aic_app;
             obj.fit(fit_ix_).ll_vec = ll_vec_app;
+            obj.fit(fit_ix_).n = sum(not(isnan(ll_vec_app)));
             obj.fit(fit_ix_).aicc = aicc_app;
             obj.fit(fit_ix_).bic = bic_app;
             
