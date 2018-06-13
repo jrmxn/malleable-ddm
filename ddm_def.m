@@ -423,7 +423,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         function [t_ups,t_dow,p_ups,p_dow] = ddm_data_draw(obj,p,N)
             if contains(func2str(obj.ddm_pdf),'ddm_prt_ana')
-                error('Need a full pdf generator from which to draw');
+                error(['Need a full pdf generator from which to draw.', ...
+                    'Change the pdf function handle.',...
+                    'e.g.: obj.ddm_pdf = @(a,b) obj.ddm_pdf_ana(a,b);']);
             end
             lt  = 0:obj.s.dt:obj.s.T-obj.s.dt;
             
