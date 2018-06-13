@@ -19,8 +19,8 @@ classdef ddm_def_sz_eeg < ddm_def_sz
         end
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
-            p_mat = ddm_cost_add_stim_dependencies@ddm_def(obj,p_mat);
-            p_mat.difficulty = obj.data.difficulty;
+            p_mat = ddm_cost_add_stim_dependencies@ddm_def_sz(obj,p_mat);
+%             p_mat.difficulty = obj.data.difficulty;
             for ix_name_channel = 1:length(obj.info.name_channel)
                 p_mat.(obj.info.name_channel{ix_name_channel}) = ...
                     obj.data.(obj.info.name_channel{ix_name_channel});
