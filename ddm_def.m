@@ -188,7 +188,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
             
             obj.opt.TolX = 1e-5;
-            obj.opt.MaxIter = 2500;
+            obj.opt.MaxIter = 10e3;
             obj.opt.parallelsearch = true;
             obj.opt.ps_AccelerateMesh = true;%should only do if smooth
             obj.opt.computeAlgo = 'PS';
@@ -290,6 +290,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 
                 f = @(x) obj.opt.h_cost(x,fit_init.p);
                 fprintf('Starting fit for %s\n',obj.subject);
+                [x,Fps] = patternsearch(@(x)...
+                    f(x)...
+                    ,x,[],[],[],[],x_lb,x_ub,minoptions);
+                fprintf('Repeat from optimum (should be quick...).\n');
                 [x,Fps] = patternsearch(@(x)...
                     f(x)...
                     ,x,[],[],[],[],x_lb,x_ub,minoptions);
