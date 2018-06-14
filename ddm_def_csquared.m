@@ -178,7 +178,7 @@ classdef ddm_def_csquared < ddm_def
                 x0 = zeros(length(xz),1);
                 x0(zeroStateIx,1) = 1;
             else
-                error('Model not defined for sz not equal to zero');
+%                 error('Model not defined for sz not equal to zero');
                 x0 = unifpdf(xz,xz(zeroStateIx)-p.sz/2,xz(zeroStateIx)+p.sz/2);
                 x0 = x0/sum(x0);
             end
