@@ -72,8 +72,13 @@ classdef ddm_def_sz_eeg < ddm_def_sz
                 ch_str = eeg_mod(ix_eeg_mod).channel;
                 p_str = eeg_mod(ix_eeg_mod).param;
                 if not(isfield(px,ch_str)),error('Are the stim dependencies set? Is %s in your data?',ch_str);end
+                if strcmpi(p_str,'v')
+                    px.(p_str) = px.(p_str) * ...
+                        (1+px.(ch_str) * px.(sprintf('%s_%s',p_str,ch_str)));
+                else
                 px.(p_str) = px.(p_str) + ...
                     px.(ch_str) * px.(sprintf('%s_%s',p_str,ch_str));
+                end
             end
             
             p_cr = ddm_def.hddm_prob_ub(px.v,px.a,px.z);
