@@ -54,6 +54,31 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             display(obj.modelKey(find(obj.debi_model(obj.id_search,'de','bi'))));
         end
         
+                
+        function ddm_delete_saved(obj,flag)
+            if not(exist('flag','var')==1)
+                flag = '';
+            end
+            markfordeletion = false;
+            
+            if contains(flag,'f')
+                markfordeletion = true;
+            else
+                ip = input('Are you sure you want to delete? [y/n]','s');
+                if strcmpi(ip,'y')
+                    fprintf('OK. Deleting.\n');
+                    markfordeletion = true;
+                elseif strcmpi(ip,'n')
+                    fprintf('OK. Not deleting.\n');
+                else
+                    fprintf('What? Not deleteing.\n');
+                end
+            end
+            if markfordeletion
+                delete(obj.ddm_get_save_path);
+            end
+        end
+        
         function [p_mat,sr_full] = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin)
             obj.id_model = id_model_de;
             obj.id_search = id_search_de;
@@ -71,10 +96,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     sr = sr.obj;
                     sr_full(ix_sub) = sr;
                     if strcmpi(minorfin,'min')
-                    [~,ix_min] = min([sr.fit.nll]);
-                    sr_fit = sr.fit(ix_min);
+                        [~,ix_min] = min([sr.fit.nll]);
+                        sr_fit = sr.fit(ix_min);
                     elseif strcmpi(minorfin,'fin')
-                    sr_fit = sr.fit(end);
+                        sr_fit = sr.fit(end);
                     else
                         error('minfin?');
                     end
@@ -109,7 +134,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                         v = nan;
                     elseif ischar(p_proto.(vec_fn{ix_fn}))
                         v = '';
-                    else 
+                    else
                         error('Undefined case');
                     end
                     p_.(vec_fn{ix_fn}) = v;
@@ -467,6 +492,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
         end
         
+
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
             %             p_mat.c = obj.data.stim_conflict;
@@ -526,7 +552,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
             p_RT_and_accuracy(p_RT_and_accuracy == 0) = 1e-32;%not great
             
-
+            
             ll_vec = log(p_RT_and_accuracy);
             ll_app = nansum(ll_vec);%nan are values that are not in condition
             %     if isnan(ll_app)||isinf(ll_app),error('non scallr ll');end
@@ -641,10 +667,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana(p,rt)
             if any(rt<0),error(['-rt is only usable for ddm_prt_ana.\n' ...
-                     'In normal pdf functions you ask for +rt, but you get '...
-                     'out pdf for both choices. Maybe this should be changed '...
-                     'in future. Also this check probably takes time since '...
-                     'rt is often large.']);
+                    'In normal pdf functions you ask for +rt, but you get '...
+                    'out pdf for both choices. Maybe this should be changed '...
+                    'in future. Also this check probably takes time since '...
+                    'rt is often large.']);
             end
             
             err = 1e-8;
