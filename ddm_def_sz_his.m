@@ -11,12 +11,27 @@ classdef ddm_def_sz_his < ddm_def_sz
             obj.modelclass = 'sz_his';
             obj.path_data = fullfile('testing','testing_sz.csv');
             obj.info.difficulties = [-5:5];
-            obj.info.name_history = {'h1_stimulus','h1_choice','nlrt'};
+            %n.b. specific format of these strings is important
+            obj.info.name_history = {...
+                'h1_difficulty','h1_choice','h1_nlrt',...
+                'h2_difficulty','h2_choice','h2_nlrt'};
         end
         
         function get_data(obj)
             get_data@ddm_def_sz(obj);
-            %the meat of the difference to ddm_def_sz_eeg goes here
+            
+            for ix_name_history = 1:length(obj.info.name_history)
+                h_name_history = obj.info.name_history{ix_name_history};
+                h_name = extractAfter(h_name_history,'_');
+                h_shift = extractBetween(h_name_history,'h','_');                
+                if iscell(h_name),h_name = h_name{1};end
+                if iscell(h_shift),h_shift = h_shift{1};end
+                ix_shift = str2double(h_shift);
+                obj.data.(h_name_history) = circshift(obj.data.(h_name),ix_shift);
+            end
+            %if we just had a break/new session ignore this trial as
+            %history is unclear
+            obj.data.rt(obj.data.cue_breaktrial==1) = nan;
         end
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
