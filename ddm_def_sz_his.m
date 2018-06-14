@@ -13,13 +13,13 @@ classdef ddm_def_sz_his < ddm_def_sz
             obj.info.difficulties = [-5:5];
             %n.b. specific format of these strings is important
             obj.info.name_history = {...
-                'h1_difficulty','h1_choice','h1_nlrt',...
-                'h2_difficulty','h2_choice','h2_nlrt'};
+                'h1_difficulty','h1_choice','h1_nlrt','h1_sdifficulty',...
+                'h2_difficulty','h2_choice','h2_nlrt','h2_sdifficulty'};
         end
         
         function get_data(obj)
             get_data@ddm_def_sz(obj);
-            
+            obj.data.sdifficulty = sign(obj.data.difficulty);
             for ix_name_history = 1:length(obj.info.name_history)
                 h_name_history = obj.info.name_history{ix_name_history};
                 h_name = extractAfter(h_name_history,'_');
