@@ -26,10 +26,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
     methods
         function obj = ddm_def
             %light initialisation so functions can be used easily
-            obj.modelclass = '';
+            obj.modelclass = '';%used to set file names
             obj.info.version = sprintf('0.0.6');
             obj.info.date = datetime;
-            
+            obj.info.description = '';
             try
                 %oly writes lowest in the hierarchy, but it's a start
                 [ST, I] = dbstack('-completenames', 1);
