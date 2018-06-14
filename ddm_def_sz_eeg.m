@@ -20,7 +20,7 @@ classdef ddm_def_sz_eeg < ddm_def_sz
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
             p_mat = ddm_cost_add_stim_dependencies@ddm_def_sz(obj,p_mat);
-%             p_mat.difficulty = obj.data.difficulty;
+
             for ix_name_channel = 1:length(obj.info.name_channel)
                 p_mat.(obj.info.name_channel{ix_name_channel}) = ...
                     obj.data.(obj.info.name_channel{ix_name_channel});
@@ -65,7 +65,8 @@ classdef ddm_def_sz_eeg < ddm_def_sz
             err = 1e-8;
             diffi_str = ddm_def_sz.diff2drift(p.difficulty);
             px = p;
-            
+            %n.b. don't just inherit from parent - this has to sandwhich
+            %inside the definition, because parent overwrites v.
             %n.b. the re-assignment to v here is also critical for v_eeg interactions
             px.v = px.(diffi_str);
             for ix_eeg_mod = 1:length(eeg_mod)
