@@ -50,6 +50,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             fclose(fid);
         end
         
+        function ddm_print_search(obj)
+            display(obj.modelKey(find(obj.debi_model(obj.id_search,'de','bi'))));
+        end
+        
         function [p_mat,sr_full] = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin)
             obj.id_model = id_model_de;
             obj.id_search = id_search_de;
@@ -77,6 +81,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     p = sr_fit.p;
                     p.nll = sr_fit.nll;
                     p.aic = sr_fit.aic;
+                    p.bic = sr_fit.bic;
                     %p.ll_vec = sr_fit.ll_vec;
                     p.n = sum(not(isnan(sr_fit.ll_vec)));
                     p.subject = sr.subject;
@@ -635,6 +640,12 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             
         end
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana(p,rt)
+            if any(rt<0),error(['-rt is only usable for ddm_prt_ana.\n' ...
+                     'In normal pdf functions you ask for +rt, but you get '...
+                     'out pdf for both choices. Maybe this should be changed '...
+                     'in future. Also this check probably takes time since '...
+                     'rt is often large.']);
+            end
             
             err = 1e-8;
             
