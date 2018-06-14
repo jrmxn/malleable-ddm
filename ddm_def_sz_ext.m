@@ -11,7 +11,7 @@ classdef ddm_def_sz_ext < ddm_def_sz
             obj.modelclass = 'sz_ext';
             obj.path_data = fullfile('testing','testing_sz.csv');
             obj.info.difficulties = [-5:5];
-%             obj.info.name_channel = {'pre_alpha_O','pre_ssvep_O','pre_random_O','pre_mlfr_C','pre_theta_FC','nlrt'};
+            %             obj.info.name_channel = {'pre_alpha_O','pre_ssvep_O','pre_random_O','pre_mlfr_C','pre_theta_FC','nlrt'};
         end
         
         function get_data(obj)
@@ -33,19 +33,19 @@ classdef ddm_def_sz_ext < ddm_def_sz
             p_ = 'k';
             modelkey_var{ix} = (p_);ix = ix+1;
             g_sd = 0.1;
-            pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
+            pd_hn = makedist('HalfNormal','mu',0,'sigma',g_sd);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
-            plbound_.(p_) = -2;
-            pubound_.(p_) = +2;
+            plbound_.(p_) = -5;
+            pubound_.(p_) = +5;
             prior_.(p_) = @(x) pdf(pd_hn,x);
-
+            
         end
     end
     
     methods (Static)
         
-                function  [pdf_,p_cr] = ddm_prt_ana(p,rt)
+        function  [pdf_,p_cr] = ddm_prt_ana(p,rt)
             [pdf_, p_cr] = ddm_prt_ana@ddm_def_sz(p,rt);
         end
         
