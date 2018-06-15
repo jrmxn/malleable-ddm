@@ -16,6 +16,23 @@ classdef ddm_def_conflict < ddm_def
         
     end
     
+    methods
+        function [p_mat,sr_full] = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin)
+            if not(exist('minorfin','var')==1),minorfin = 'fin';end
+            [p_mat,sr_full] = aux_gather@ddm_def(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin);
+            
+            for ix_sub = 1:length(sr_full)
+                ix_row_p_mat = find(strcmpi(p_mat.subject,sr_full(ix_sub).subject));
+                case_correct = strcmpi(sr_full(ix_sub).data.correctness,'correct');
+                case_conflict = sr_full(ix_sub).data.stim_conflict;
+                p_mat.rt(ix_row_p_mat) = nanmean(sr_full(ix_sub).data.rt(case_correct));
+                p_mat.rtcong(ix_row_p_mat) = nanmean(sr_full(ix_sub).data.rt(case_correct&not(case_conflict)));
+                p_mat.rtinco(ix_row_p_mat) = nanmean(sr_full(ix_sub).data.rt(case_correct&case_conflict));
+                p_mat.rtdiff(ix_row_p_mat) = p_mat.rtinco(ix_sub)-p_mat.rtcong(ix_sub);
+            end
+
+        end
+    end
     methods (Access = protected)
         function [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ddm_def_instance(obj)
             
