@@ -51,8 +51,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             fclose(fid);
         end
         
-        function ddm_print_search(obj)
-            display(obj.modelKey(find(obj.debi_model(obj.id_search,'de','bi'))));
+        function g = ddm_print_search(obj)
+            g = obj.modelKey(find(obj.debi_model(obj.id_search,'de','bi')));
+            disp(g);
         end
         
         
@@ -89,6 +90,11 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             vec_empty = [];
             p_mat = struct([]);clear p_mat;%annoying to init properly.
             sr_full = struct([]);clear sr_full;%annoying to init properly.
+            
+            if not(exist('minorfin','var')==1)
+                minorfin = 'fin';
+            end
+            
             for ix_sub = 1:length(sub_cell)
                 f_ = strrep(f,'**',sub_cell{ix_sub});
                 
