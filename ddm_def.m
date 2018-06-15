@@ -171,7 +171,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             obj.s.dx = 0.01;%0.01 about = ddx = 100
             %             obj.s.x_bound_scale = 6;
             obj.s.T = 5;%this could be set dynamically based on closed form
-            obj.s.nits = 25000;
+            obj.s.nits = 25e3;
             %             obj.s.inittype = 'random';
             obj.s.path_data = '';
             obj.ddm_pdf = @(a,b) obj.ddm_pdf_ana(a,b);
@@ -188,7 +188,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
             
             obj.opt.TolX = 1e-5;
-            obj.opt.MaxIter = 10e3;
+            obj.opt.MaxIter = 25e3;
             obj.opt.parallelsearch = true;
             obj.opt.ps_AccelerateMesh = true;%should only do if smooth
             obj.opt.computeAlgo = 'PS';
