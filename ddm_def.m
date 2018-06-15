@@ -54,7 +54,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             display(obj.modelKey(find(obj.debi_model(obj.id_search,'de','bi'))));
         end
         
-                
+        
         function ddm_delete_saved(obj,flag)
             if not(exist('flag','var')==1)
                 flag = '';
@@ -170,8 +170,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             %             obj.s.ddx = 100;%no longer used
             obj.s.dx = 0.01;%0.01 about = ddx = 100
             %             obj.s.x_bound_scale = 6;
+            
             obj.s.T = 5;%this could be set dynamically based on closed form
-            obj.s.nits = 25e3;
+            obj.s.nits = 50e3;
             %             obj.s.inittype = 'random';
             obj.s.path_data = '';
             obj.ddm_pdf = @(a,b) obj.ddm_pdf_ana(a,b);
@@ -187,8 +188,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 obj.s.xl.(parameter_string) = co;co = co+1;
             end
             
+            obj.opt.dodoublefit = true;
             obj.opt.TolX = 1e-5;
-            obj.opt.MaxIter = 25e3;
+            obj.opt.MaxIter = 50e3;
             obj.opt.parallelsearch = true;
             obj.opt.ps_AccelerateMesh = true;%should only do if smooth
             obj.opt.computeAlgo = 'PS';
@@ -289,14 +291,24 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     'UseParallel',obj.opt.parallelsearch,'UseCompletePoll',obj.opt.parallelsearch);%,
                 
                 f = @(x) obj.opt.h_cost(x,fit_init.p);
+                
                 fprintf('Starting fit for %s\n',obj.subject);
                 [x,Fps] = patternsearch(@(x)...
                     f(x)...
                     ,x,[],[],[],[],x_lb,x_ub,minoptions);
-                fprintf('Repeat from optimum (should be quick...).\n');
-                [x,Fps] = patternsearch(@(x)...
-                    f(x)...
-                    ,x,[],[],[],[],x_lb,x_ub,minoptions);
+                
+                if isfield(obj.opt,'dodoublefit')
+                    dodoublefit = obj.opt.dodoublefit;
+                else
+                    dodoublefit = true;
+                end
+                
+                if dodoublefit
+                    fprintf('Repeat from optimum (should be quick...).\n');
+                    [x,Fps] = patternsearch(@(x)...
+                        f(x)...
+                        ,x,[],[],[],[],x_lb,x_ub,minoptions);
+                end
             else
                 error('Invalid compute algo')
             end
@@ -496,7 +508,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
         end
         
-
+        
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
             %             p_mat.c = obj.data.stim_conflict;
