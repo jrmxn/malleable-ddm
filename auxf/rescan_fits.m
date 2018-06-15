@@ -15,14 +15,23 @@ for ix_d = 1:length(d)
     
     sr.opt.dodoublefit = false;
         
-    sr.ddm_fit_init(sr.fit(end).p);
     
+%     if any(contains(sr.ddm_print_search,'z_'))
+%         sr.ddm_delete_saved('-f');
+%     end
     sr.s.reinit = false;
-    sr.ddm_fit;
     
+    sr.ddm_fit_init(sr.fit(end).p);
+    sr.ddm_fit;
+%     
     improvement = sr.fit(end-1).nll - sr.fit(end).nll;
-    if improvement>2e-3
+    forcesave = false;
+    
+    th = 2e-3;
+    if (improvement>th)
         fprintf('%s improved!!! Saving...\n',ix_d);
+    end
+    if (improvement>th)||forcesave
         sr.ddm_save;
     end
 end
