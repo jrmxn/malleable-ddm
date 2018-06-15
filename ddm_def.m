@@ -52,6 +52,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function g = ddm_print_search(obj)
+            if isempty(obj.modelKey)
+                fprintf('Model key not set. Setting it...\n');
+                obj.modelKey = obj.ddm_get_instance('keyf');
+            end
             g = obj.modelKey(find(obj.debi_model(obj.id_search,'de','bi')));
             disp(g);
         end
@@ -82,6 +86,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function [p_mat,sr_full] = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin)
+            if not(exist('minorfin','var')==1),minorfin = 'fin';end
             obj.id_model = id_model_de;
             obj.id_search = id_search_de;
             obj.subject = '**';
@@ -90,10 +95,6 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             vec_empty = [];
             p_mat = struct([]);clear p_mat;%annoying to init properly.
             sr_full = struct([]);clear sr_full;%annoying to init properly.
-            
-            if not(exist('minorfin','var')==1)
-                minorfin = 'fin';
-            end
             
             for ix_sub = 1:length(sub_cell)
                 f_ = strrep(f,'**',sub_cell{ix_sub});
