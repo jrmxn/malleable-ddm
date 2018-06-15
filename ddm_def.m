@@ -514,6 +514,133 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             %             p_mat.c = obj.data.stim_conflict;
         end
         
+        function h_f = aux_plot(obj,varargin)
+            % Plot function for pdf/data - a lot like cost function
+            % At the moment this function would deal terribly
+            % with individual trial modulation data - (each trial would
+            % spawn a subplot).
+            % Example use:
+            % %             for ix_sub = 1:length(sub_cell)
+            % %                 c = cmap(issz(ix_sub)+1,:);
+            % %                 es = sprintf('_isssz%d',issz(ix_sub));
+            % %                 skipcases.difficulty = [-2,-1,+1,+2];
+            % %                 h_f = sr_cell{ix_sub}.aux_plot('color',c,'es',es,'plotsinglerow',true,'skipcases',skipcases);
+            % %                 
+            % %                 drawnow;
+            % %                 printForPub(gcf,h_f.Name,...
+            % %                     'fformat',fig.fformat,'physicalSizeCM',[25,5],'savedir',fig.savedir,'doPrint',fig.doPrint);
+            % %             end
+            %
+            addpath('auxf');%want to use numSubplots function - not sure if this points to the right folder though
+            %
+            d.color = [0 0 0];
+            d.es = '';%extra string in title name
+            d.plotsinglerow = false;
+            d.p = obj.fit(end).p;
+            d.skipcases = struct;
+            %
+            v = inputParser;
+            addOptional(v,'color',d.color)
+            addOptional(v,'es',d.es)
+            addOptional(v,'plotsinglerow',d.plotsinglerow)
+            addOptional(v,'p',d.p)
+            addOptional(v,'skipcases',d.skipcases)
+            parse(v,varargin{:})
+            v = v.Results;
+            d = [];clear d;
+            %
+            p = v.p;v = rmfield(v,'p');
+            %
+            p_mat = struct2table(repmat(p,height(obj.data),1));
+            
+            %Add trial-trial stimulus dependencies (e.g. coherence, conflict etc.)
+            p_mat = obj.ddm_cost_add_stim_dependencies(p_mat);
+            
+            p_mat_unique = unique(p_mat);
+            p_mat_array = table2array(p_mat);
+            
+            case_nan = isnan(obj.data.rt)|isnan(obj.data.choice);
+            case_right = obj.data.choice;
+            %this is ugly - setting nan to zero so that I can use them as
+            %logicals.case_nnan is used to exclude them later though so ok.
+            case_right(case_nan) = 0;
+            case_right = logical(case_right);
+            case_wrong = not(case_right);
+            
+            %skipcases!
+            fn = fieldnames(v.skipcases);
+            for ix_fn = 1:length(fn)
+                p_mat_unique(ismember(p_mat_unique.(fn{ix_fn}),v.skipcases.(fn{ix_fn})),:) = [];
+            end
+            
+            if v.plotsinglerow
+                ns = [1,height(p_mat_unique)];
+            else
+                [ns,~] = numSubplots(height(p_mat_unique));
+            end
+            lt  = 0:obj.s.dt:obj.s.T-obj.s.dt;
+            
+            h_f = figure;clf;
+            h_f.Name = sprintf('%s_%s%s',obj.modelclass,obj.subject,v.es);
+            %find which variable is changing
+            ix_change = find(arrayfun(@(ix) height(unique(p_mat_unique(:,ix))),1:size(p_mat_unique,2))>1);
+            if length(ix_change)>1,error('Not equipped to deal with multiple changes');end
+            name_change = p_mat_unique.Properties.VariableNames{ix_change};
+            name_change_label = name_change;
+            
+            if length(name_change_label)>4,name_change_label = [name_change_label(1:4) '.'];end
+            for ix_p_config = 1:height(p_mat_unique)
+                px = table2struct(p_mat_unique(ix_p_config,:));
+                px_array = table2array(p_mat_unique(ix_p_config,:));
+                case_config = all(p_mat_array==px_array,2);
+                t_cr = obj.data.rt(case_right&case_config&not(case_nan));
+                t_cw = obj.data.rt(case_wrong&case_config&not(case_nan));
+                
+                title_ = sprintf('%s:\n%0.1f',name_change_label,px.(name_change));
+                %Get simulated pdf
+                if contains(func2str(obj.ddm_pdf),'ddm_prt_ana')
+                    [pdf_dow,pdf_ups,rt,~,~] = obj.ddm_pdf_ana(px,lt);
+                else
+                    [pdf_dow,pdf_ups,rt,~,~] = obj.ddm_pdf(px,lt);
+                end
+                
+                %Get data pdf
+                bw = 0.065;
+                fr = length(t_cr)/(length(t_cr)+length(t_cw));
+                if length(t_cr)>1
+                    pdf_ups_dat = ksdensity(t_cr,rt,'Bandwidth',bw)*fr;
+                else
+                    pdf_ups_dat = zeros(size(rt));
+                end
+                if length(t_cw)>1
+                    pdf_dow_dat = ksdensity(t_cw,rt,'Bandwidth',bw)*(1-fr);
+                else
+                    pdf_dow_dat = zeros(size(rt));
+                end
+                
+                %ugly (remove zero before flip)
+                rt0 = rt==0;rt(rt0) = [];
+                pdf_dow(rt0) = [];pdf_ups(rt0) = [];
+                pdf_dow_dat(rt0) = [];pdf_ups_dat(rt0) = [];
+                
+                rte = [-fliplr(rt),rt];
+                pdf = [fliplr(pdf_dow_dat),pdf_ups_dat];
+                pdf_dat = [fliplr(pdf_dow),pdf_ups];
+                
+                if not(length(unique(rte))==2*length(rt))
+                    error('Zero in the middle? Need to fix.');
+                end
+                
+                subplot(ns(1),ns(2),ix_p_config);cla;hold on;
+                h1 = plot(rte,pdf_dat,'Color',v.color,'lineWidth',2);
+                h2 = plot(rte,pdf,'--','Color',0.6*ones(1,3),'lineWidth',2);
+                title(title_);
+                axis tight;
+            end
+            legend([h1,h2],{'Data','Sim'},'Location','NorthEast');
+            xlabel('RT (s)')
+        end
+        
         function [nll_app,aic_app,aicc_app,bic_app,ll_vec] = ddm_cost_pdf_nll(obj,x,p)
             if not(isempty(x))
                 p = obj.px2p(obj.s.xl,p,x);
@@ -537,7 +664,6 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             case_wrong = not(case_right);
             lt  = 0:obj.s.dt:obj.s.T-obj.s.dt;
             for ix_p_config = 1:height(p_mat_unique)
-                %accuracy coding at the moment... should make this flexible
                 px = table2struct(p_mat_unique(ix_p_config,:));
                 px_array = table2array(p_mat_unique(ix_p_config,:));
                 case_config = all(p_mat_array==px_array,2);
