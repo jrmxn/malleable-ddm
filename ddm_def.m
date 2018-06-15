@@ -18,6 +18,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         info = [];
         mcmc = [];
         ddm_pdf = [];
+        pmod = struct;
     end
     properties (Transient = true)
         objp = [];
@@ -27,7 +28,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function obj = ddm_def
             %light initialisation so functions can be used easily
             obj.modelclass = '';%used to set file names
-            obj.info.version = sprintf('0.0.6');
+            obj.info.version = sprintf('0.0.7');
             obj.info.date = datetime;
             obj.info.description = '';
             try
@@ -584,11 +585,14 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             h_f.Name = sprintf('%s_%s%s',obj.modelclass,obj.subject,v.es);
             %find which variable is changing
             ix_change = find(arrayfun(@(ix) height(unique(p_mat_unique(:,ix))),1:size(p_mat_unique,2))>1);
-            if length(ix_change)>1,error('Not equipped to deal with multiple changes');end
+            if length(ix_change)>1,warning('Not equipped to deal with multiple changes');
+            else
             name_change = p_mat_unique.Properties.VariableNames{ix_change};
             name_change_label = name_change;
-            
             if length(name_change_label)>4,name_change_label = [name_change_label(1:4) '.'];end
+            end
+            
+            
             for ix_p_config = 1:height(p_mat_unique)
                 px = table2struct(p_mat_unique(ix_p_config,:));
                 px_array = table2array(p_mat_unique(ix_p_config,:));
