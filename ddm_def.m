@@ -532,7 +532,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             % %                     'fformat',fig.fformat,'physicalSizeCM',[25,5],'savedir',fig.savedir,'doPrint',fig.doPrint);
             % %             end
             %
-            addpath('auxf');%want to use numSubplots function - not sure if this points to the right folder though
+            addpath('ext');%want to use numSubplots function - not sure if this points to the right folder though
             %
             d.color = [0 0 0];
             d.es = '';%extra string in title name
