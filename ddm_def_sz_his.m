@@ -13,17 +13,18 @@ classdef ddm_def_sz_his < ddm_def_sz
             obj.info.difficulties = [-5:5];
             %n.b. specific format of these strings is important
             obj.info.name_history = {...
-                'h1_difficulty','h1_choice','h1_nlrt','h1_sdifficulty',...
-                'h2_difficulty','h2_choice','h2_nlrt','h2_sdifficulty'};
+                'h1_difficulty','h1_choice','h1_nlrt','h1_sdifficulty','h1_adifficulty',...
+                'h2_difficulty','h2_choice','h2_nlrt','h2_sdifficulty','h2_adifficulty'};
         end
         
         function get_data(obj)
             get_data@ddm_def_sz(obj);
             obj.data.sdifficulty = sign(obj.data.difficulty);
+            obj.data.adifficulty = abs(obj.data.difficulty);
             for ix_name_history = 1:length(obj.info.name_history)
                 h_name_history = obj.info.name_history{ix_name_history};
                 h_name = extractAfter(h_name_history,'_');
-                h_shift = extractBetween(h_name_history,'h','_');                
+                h_shift = extractBetween(h_name_history,'h','_');
                 if iscell(h_name),h_name = h_name{1};end
                 if iscell(h_shift),h_shift = h_shift{1};end
                 ix_shift = str2double(h_shift);
@@ -36,7 +37,7 @@ classdef ddm_def_sz_his < ddm_def_sz
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
             p_mat = ddm_cost_add_stim_dependencies@ddm_def_sz(obj,p_mat);
-
+            
             % this used to be;
             %	name_attach = obj.info.name_history;
             % but no need to bring in the whole thing (esp. since used to make
@@ -67,15 +68,18 @@ classdef ddm_def_sz_his < ddm_def_sz
             
             % we can put his based noise on...
             for ix_name_history = 1:length(obj.info.name_history)
-            p_ = sprintf('%s_%s','t',obj.info.name_history{ix_name_history});
-            [modelkey_var{ix},pran_.(p_),pdef_.(p_),plbound_.(p_),pubound_.(p_),prior_.(p_)] ...
-                = def_his_params(p_, 0.1);ix = ix+1;
-            p_ = sprintf('%s_%s','z',obj.info.name_history{ix_name_history});
-            [modelkey_var{ix},pran_.(p_),pdef_.(p_),plbound_.(p_),pubound_.(p_),prior_.(p_)] ...
-                = def_his_params(p_, 0.1);ix = ix+1;
-            p_ = sprintf('%s_%s','v',obj.info.name_history{ix_name_history});
-            [modelkey_var{ix},pran_.(p_),pdef_.(p_),plbound_.(p_),pubound_.(p_),prior_.(p_)] ...
-                = def_his_params(p_, 0.1);ix = ix+1;
+                p_ = sprintf('%s_%s','t',obj.info.name_history{ix_name_history});
+                [modelkey_var{ix},pran_.(p_),pdef_.(p_),plbound_.(p_),pubound_.(p_),prior_.(p_)] ...
+                    = def_his_params(p_, 0.1);ix = ix+1;
+                p_ = sprintf('%s_%s','z',obj.info.name_history{ix_name_history});
+                [modelkey_var{ix},pran_.(p_),pdef_.(p_),plbound_.(p_),pubound_.(p_),prior_.(p_)] ...
+                    = def_his_params(p_, 0.1);ix = ix+1;
+                p_ = sprintf('%s_%s','v',obj.info.name_history{ix_name_history});
+                [modelkey_var{ix},pran_.(p_),pdef_.(p_),plbound_.(p_),pubound_.(p_),prior_.(p_)] ...
+                    = def_his_params(p_, 0.1);ix = ix+1;
+                p_ = sprintf('%s_%s','a',obj.info.name_history{ix_name_history});
+                [modelkey_var{ix},pran_.(p_),pdef_.(p_),plbound_.(p_),pubound_.(p_),prior_.(p_)] ...
+                    = def_his_params(p_, 0.1);ix = ix+1;
             end
         end
     end
@@ -94,12 +98,21 @@ classdef ddm_def_sz_his < ddm_def_sz
                 ch_str = his_mod(ix_his_mod).channel;
                 p_str = his_mod(ix_his_mod).param;
                 if not(isfield(px,ch_str)),error('Are the stim dependencies set? Is %s in your data?',ch_str);end
-                if strcmpi(p_str,'v')
-                    px.(p_str) = px.(p_str) * ...
-                        (1+px.(ch_str) * px.(sprintf('%s_%s',p_str,ch_str)));
+                spec_string = sprintf('%s_%s',p_str,ch_str);
+                
+                %this is hypothesis specific:
+                if contains(ch_str,'choice')
+                    if strcmpi(p_str,'v')
+                        %v is allowed to change so don't need to shift
+                        %choice
+                        px.(p_str) = px.(p_str) * (1 +px.(ch_str)*px.(spec_string));
+                    elseif strcmpi(p_str,'z')
+                        %z is fixed so need to manually shift choice
+                        px.(p_str) = px.(p_str) * (1 +2*(px.(ch_str)-0.5)*px.(spec_string));
+                    end
                 else
-                px.(p_str) = px.(p_str) + ...
-                    px.(ch_str) * px.(sprintf('%s_%s',p_str,ch_str));
+                    %default is additive
+                    px.(p_str) = px.(p_str) + px.(ch_str) * px.(spec_string);
                 end
             end
             
