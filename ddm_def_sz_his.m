@@ -37,9 +37,14 @@ classdef ddm_def_sz_his < ddm_def_sz
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
             p_mat = ddm_cost_add_stim_dependencies@ddm_def_sz(obj,p_mat);
 
-            for ix_name_history = 1:length(obj.info.name_history)
-                p_mat.(obj.info.name_history{ix_name_history}) = ...
-                    obj.data.(obj.info.name_history{ix_name_history});
+            % this used to be;
+            %	name_attach = obj.info.name_history;
+            % but no need to bring in the whole thing (esp. since used to make
+            % p_mat_unique)
+            name_attach = {obj.pmod.channel};
+            for ix_name_attach = 1:length(name_attach)
+                p_mat.(name_attach{ix_name_attach}) = ...
+                    obj.data.(name_attach{ix_name_attach});
             end
         end
         
