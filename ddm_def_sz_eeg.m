@@ -55,7 +55,7 @@ classdef ddm_def_sz_eeg < ddm_def_sz
             p_ = sprintf('%s_%s','t',obj.info.name_channel{ix_name_channel});
             [modelkey_var{ix},pran_.(p_),pdef_.(p_),plbound_.(p_),pubound_.(p_),prior_.(p_)] ...
                 = def_eeg_params(p_, 0.1);ix = ix+1;
-            p_ = sprintf('%s_%s','z',obj.info.name_channel{ix_name_channel});
+            p_ = sprintf('%s_%s','a',obj.info.name_channel{ix_name_channel});
             [modelkey_var{ix},pran_.(p_),pdef_.(p_),plbound_.(p_),pubound_.(p_),prior_.(p_)] ...
                 = def_eeg_params(p_, 0.1);ix = ix+1;
             p_ = sprintf('%s_%s','v',obj.info.name_channel{ix_name_channel});
