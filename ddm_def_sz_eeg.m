@@ -21,9 +21,15 @@ classdef ddm_def_sz_eeg < ddm_def_sz
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
             p_mat = ddm_cost_add_stim_dependencies@ddm_def_sz(obj,p_mat);
 
-            for ix_name_channel = 1:length(obj.info.name_channel)
-                p_mat.(obj.info.name_channel{ix_name_channel}) = ...
-                    obj.data.(obj.info.name_channel{ix_name_channel});
+            if isfield(obj.pmod,'channel')
+                name_attach = {obj.pmod.channel};
+            else
+                %old version - for compatability.
+                name_attach = obj.info.name_channel;
+            end
+            for ix_name_attach = 1:length(name_attach)
+                p_mat.(name_attach{ix_name_attach}) = ...
+                    obj.data.(name_attach{ix_name_attach});
             end
         end
         
