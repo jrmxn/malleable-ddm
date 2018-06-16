@@ -15,6 +15,7 @@ Purpose
 =======
 
 To allow rapid prototyping of DDM extensions.
+Code is a synthesis of tricks that I have been using to run drift-diffusion based models for a few years, as well as some taken from the HDDM toolbox.
 
 Features
 ========
