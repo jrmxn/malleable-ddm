@@ -51,8 +51,8 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             fn = fieldnames(p_list_sd);
             for ix_fn = 1:length(fn)
             p_ = fn{ix_fn};
-            modelkey_var{ix} = (p_);ix = ix+1;
-            g_sd = p_list_sd(modelkey_var{ix});
+            modelkey_var{ix} = p_;ix = ix+1;
+            g_sd = p_list_sd.(p_);
             pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
