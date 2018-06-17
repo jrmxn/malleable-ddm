@@ -87,6 +87,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         function [p_mat,sr_full] = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin)
             if not(exist('minorfin','var')==1),minorfin = 'fin';end
+            if not(isnumeric(id_model_de)&isnumeric(id_search_de))
+                error('You put non numeric inputs into aux_gather - expects decimal model specification.');
+            end
             obj.id_model = id_model_de;
             obj.id_search = id_search_de;
             obj.subject = '**';
@@ -126,7 +129,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 end
             end
             if not(exist('p_mat','var')==1)
-                error('No files found');
+                error('No files found, e.g.: %s',f_);
             end
             % fill in the blanks with nans, ''
             % get an example of a subject result that we have
