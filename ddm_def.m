@@ -271,7 +271,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 if not(same_model|same_search),fprintf('With a new model!\n');end
                 fit_init.p = obj.fit(fit_ix_-1).p;
             end
+            fprintf('Getting initial cost...: ');
             fit_init.nll = obj.opt.h_cost([],fit_init.p);
+            fprintf('%0.3f\n',fit_init.nll);
             fit_init.p_lb = obj.ddm_get_instance('lbound');
             fit_init.p_ub = obj.ddm_get_instance('ubound');
             
