@@ -1156,7 +1156,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 tt = x/(a^2);% # use normalized time
                 p = ddm_def.ftt_01w(tt, w, err);% #get f(t|0,1,w)
                 
-                %# convert to f(t|v,a,w)
+                %% convert to f(t|v,a,w)
                 op =  p*exp(-v*a*w -(v^2)*x/2)/(a^2);
             end
         end
@@ -1172,10 +1172,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             elseif sv==0
                 op =  ddm_def.hddm_pdf(x, v, a, z, err);
             else
-                tt = x/(a^2); %# use normalized time
-                p  = ddm_def.ftt_01w(tt, z, err); %#get f(t|0,1,w)
+                tt = x/(a^2); %% use normalized time
+                p  = ddm_def.ftt_01w(tt, z, err); %%get f(t|0,1,w)
                 
-                %# convert to f(t|v,a,w)
+                %% convert to f(t|v,a,w)
                 op = exp(log(p) + ((a*z*sv)^2 - 2*a*v*z - (v^2)*x)/(2*(sv^2)*x+2))/sqrt((sv^2)*x+1)/(a^2);
             end
         end
@@ -1190,14 +1190,14 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             use_adaptive = 0;
             %             simps_err = 1e-8;
             %"""full pdf"""
-            %# Check if parpameters are valid (also don't compute if less than t)
+            %% Check if parpameters are valid (also don't compute if less than t)
             if (z<0) || (z>1) || (a<0) || (t<0) || (st<0) || (sv<0) || (sz<0) || (sz>1) ||...
                     ((abs(x)-(t-st/2.))<0) || (z+sz/2.>1) || (z-sz/2.<0) || (t-st/2.<0)
                 op = 0;
                 return;
             end
             
-            %# transform x,v,z if x is upper bound response
+            %% transform x,v,z if x is upper bound response
             if x > 0
                 v = -v;
                 z = 1.-z;
@@ -1212,23 +1212,23 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
             
             if (sz==0)
-                if (st==0) %#sv=$,sz=0,st=0
+                if (st==0) %%sv=$,sz=0,st=0
                     op = ddm_def.hddm_pdf_sv(x - t, v, sv, a, z, err);
-                else      %#sv=$,sz=0,st=$
+                else      %%sv=$,sz=0,st=$
                     if use_adaptive>0
                         error('Not copied over');
                     else
                         op = ddm_def.hddm_simpson_1D(x, v, sv, a, z, t, err, z, z, 0, t-st/2., t+st/2., n_st);
                     end
                 end
-            else %#sz=$
-                if (st==0) %#sv=0,sz=$,st=0
+            else %%sz=$
+                if (st==0) %%sv=0,sz=$,st=0
                     if use_adaptive
                         error('Not copied over');
                     else
                         op = ddm_def.hddm_simpson_1D(x, v, sv, a, z, t, err, z-sz/2., z+sz/2., n_sz, t, t , 0);
                     end
-                else      %#sv=0,sz=$,st=$
+                else      %%sv=0,sz=$,st=$
                     if use_adaptive
                         error('Not copied over');
                     else
