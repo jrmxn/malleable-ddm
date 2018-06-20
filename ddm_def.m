@@ -59,7 +59,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
             g = obj.modelKey(find(obj.debi_model(obj.id_search,'de','bi')));
             if not(quiet)
-            disp(g);
+                disp(g);
             end
         end
         
@@ -71,7 +71,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
             g = obj.modelKey(find(obj.debi_model(obj.id_model,'de','bi')));
             if not(quiet)
-            disp(g);
+                disp(g);
             end
         end
         
@@ -171,14 +171,16 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             p_mat = struct2table(p_mat);
         end
         
-        function ddm_init(obj, id_model,id_search)
+        function ddm_init(obj, id_model,id_search,allow_load)
             %Set the simulation settings (s), and the optimisation settings
             %(opt). id_model and if_fit (which are decimals,
             % which correspond to binary vectors referencing the
             % parameters) get set.
             % additionally id_search gets translated into xl which holds the
             % fit parameters as strings in a cell.
-            if isempty(obj.data)
+            
+            if nargin<4,allow_load = true;end
+            if isempty(obj.data)&&allow_load
                 get_data(obj);
             end
             obj.modelKey = ddm_get_instance(obj, 'keyf');
@@ -742,16 +744,119 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             
             ll_vec = log(p_RT_and_accuracy);
             ll_app = nansum(ll_vec);%nan are values that are not in condition
-            %     if isnan(ll_app)||isinf(ll_app),error('non scallr ll');end
+            %
             if isnan(ll_app),ll_app=-inf;end
             k = obj.s.fit_n+1;%number of free params + 1 for fixed noise
             n = sum(not(isnan(p_RT_and_accuracy)));
-            %prob an issue here with thr fact that some trials are kicked out..
+            %
             bic_app = log(n)*k-2*ll_app;
             aic_app = 2*k-2*ll_app;
             aicc_app = aic_app + (2*(k^2) + 2*k)/(n-k-1);
             nll_app = -ll_app;
         end
+        
+        function  [dv_mea,dv_sem,dv_n,rt,dv_ndt_mea] = ddm_eeg_match( obj, varargin)
+            %this method generates the expected DV trace for a given trial
+            d.dt_win = 0.01;
+            d.avgmet = 'met_mean';
+            %%
+            v = inputParser;
+            addOptional(v,'dt_win',d.dt_win)
+            addOptional(v,'avgmet',d.avgmet)
+            parse(v,varargin{:});
+            %%
+            v = d;clear d;
+            %
+            p = obj.fit(end).p;
+            %
+            p_mat = struct2table(repmat(p,height(obj.data),1));
+            
+            %Add trial-trial stimulus dependencies (e.g. coherence, conflict etc.)
+            p_mat = obj.ddm_cost_add_stim_dependencies(p_mat);
+            
+            p_mat_unique = unique(p_mat);
+            p_mat_unique(p_mat_unique.skip>0,:) = [];
+            
+            p_mat_array = table2array(p_mat);
+            
+            case_nan = isnan(obj.data.rt)|isnan(obj.data.choice);
+            case_right = obj.data.choice;
+            %this is ugly - setting nan to zero so that I can use them as
+            %logicals.case_nnan is used to exclude them later though so ok.
+            case_right(case_nan) = 0;
+            case_right = logical(case_right);
+            case_wrong = not(case_right);
+            lt  = 0:obj.s.dt:obj.s.T-obj.s.dt;
+            for ix_p_config = 1:height(p_mat_unique)
+                px = table2struct(p_mat_unique(ix_p_config,:));
+                px_array = table2array(p_mat_unique(ix_p_config,:));
+                case_config = all(p_mat_array==px_array,2);
+                t_cr = obj.data.rt(case_right&case_config&not(case_nan));
+                t_cw = obj.data.rt(case_wrong&case_config&not(case_nan));
+                
+                
+                ix_cr = round(t_cr/obj.s.dt);
+                ix_cw = round(t_cw/obj.s.dt);
+                [~,~,rt,~,~,vec_rt_sim,vec_correct_sim_ix,td_tot,x] = obj.ddm_pdf_bru(px,lt,obj.s.nits);
+                
+                if ix_p_config == 1
+                    if size(x,2)~=length(rt)
+                        error('lt is wrong length?');
+                    end
+                    dv_mea = nan(height(obj.data),size(x,2));
+                    dv_ndt_mea = nan(height(obj.data),1);
+                    dv_sem = inf(height(obj.data),size(x,2));
+                    dv_n = inf(height(obj.data),size(x,2));
+                end
+                
+                for ix_trial = 1:height(obj.data)
+                    
+                    if case_config(ix_trial)
+                        case_samechoice = case_right(ix_trial)==vec_correct_sim_ix;
+                        
+                        case_near = all([...
+                            [obj.data(ix_trial,:).rt-v.dt_win<vec_rt_sim(:)],...
+                            [obj.data(ix_trial,:).rt+v.dt_win>vec_rt_sim(:)]...
+                            ],2);
+                        z = x(case_near&case_samechoice,:);
+                        dv_ndt = td_tot(case_near&case_samechoice);
+                        %                         toc;
+                        if case_right(ix_trial)
+                            [~,x_bound]=sort(z>+px.a,2,'descend');
+                            
+                        elseif case_wrong(ix_trial)
+                            [~,x_bound]=sort(z< 0,2,'descend');
+                        else
+                            error('?');
+                        end
+                        
+                        x_bound=x_bound(:,1);
+                        x_bound(x_bound==1) = nan;
+                        %
+                        a = nan(size(z));
+                        for ix_row = 1:size(z,1)
+                            if ~isnan(x_bound(ix_row))
+                                a(ix_row,end-x_bound(ix_row)+1:end) = z(ix_row,1:x_bound(ix_row));
+                            end
+                        end
+                        dv_ndt_mea(ix_trial) = nanmean(dv_ndt);
+                        if strcmpi(v.avgmet,'met_mean')
+                            dv_mea(ix_trial,:) = nanmean(a,1);
+                            dv_sem(ix_trial,:) = nanstd(a,0,1)./sqrt(sum(~isnan(a),1));
+                            dv_n(ix_trial,:) = sum(~isnan(a),1);
+                        elseif strcmpi(v.avgmet,'met_median')
+                            dv_mea(ix_trial,:) = nanmedian(a,1);
+                            dv_sem(ix_trial,:) = 1.4826*mad(a,1,1)./sqrt(sum(~isnan(a),1));
+                            dv_n(ix_trial,:) = sum(~isnan(a),1);
+                        else
+                            error('Bad v.avgmet input');
+                        end
+                    end
+                end
+            end
+            rt = fliplr(-rt);
+        end
+        
         
     end
     
@@ -903,7 +1008,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 
             end
         end
-        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_bru(p,lt,N_its)
+        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,vec_rt,vec_correct,td_tot,x] = ddm_pdf_bru(p,lt,N_its)
             
             dt = lt(2)-lt(1);
             T = lt(end)+dt;
