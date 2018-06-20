@@ -28,7 +28,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function obj = ddm_def
             %light initialisation so functions can be used easily
             obj.modelclass = '';%used to set file names
-            obj.info.version = sprintf('0.0.7');
+            obj.info.version = sprintf('0.0.8');
             obj.info.date = datetime;
             obj.info.description = '';
             try
@@ -51,13 +51,28 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             fclose(fid);
         end
         
-        function g = ddm_print_search(obj)
+        function g = ddm_print_search(obj,quiet)
+            if nargin==1,quiet = false;end
             if isempty(obj.modelKey)
                 fprintf('Model key not set. Setting it...\n');
                 obj.modelKey = obj.ddm_get_instance('keyf');
             end
             g = obj.modelKey(find(obj.debi_model(obj.id_search,'de','bi')));
+            if not(quiet)
             disp(g);
+            end
+        end
+        
+        function g = ddm_print_model(obj,quiet)
+            if nargin==1,quiet = false;end
+            if isempty(obj.modelKey)
+                fprintf('Model key not set. Setting it...\n');
+                obj.modelKey = obj.ddm_get_instance('keyf');
+            end
+            g = obj.modelKey(find(obj.debi_model(obj.id_model,'de','bi')));
+            if not(quiet)
+            disp(g);
+            end
         end
         
         
@@ -246,19 +261,28 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     if any(strcmp(parameter_string,fieldnames(init_p_insert)))
                         %if we want to insert a p-value structure, then
                         %the inserted p-values get priority
+                        %
                         init_p_reduced.(parameter_string) = init_p_insert.(parameter_string);
                     elseif any(strcmp(parameter_string,obj.modelKey(id_search_index)))
                         %if we are going to try to optimise this parameter
                         %then get it from a distribution
+                        %
                         init_p_reduced.(parameter_string) = init_p_full_random.(parameter_string);
                     elseif any(strcmp(parameter_string,obj.modelKey(id_model_index)))
                         %If they are not in search but they are in the
                         %base model def set them to defaults (e.g. usually
                         %                         s = 1, z = 0.5)
+                        %
                         init_p_reduced.(parameter_string) = init_p_full_default.(parameter_string);
                     else
                         % if the parameter just isn't in this model
                         % definition.
+                        %
+                        % It would maybe be better (debatable) if the
+                        % parameter was just not put into the structure for
+                        % this case. However do
+                        % not want to change this now 18/06/20 (v0.0.8) for
+                        % backwards compatibility with model fits.
                         init_p_reduced.(parameter_string) = 0;
                     end
                 end
@@ -525,6 +549,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
             %             p_mat.c = obj.data.stim_conflict;
+            p_mat.skip = zeros(height(p_mat),1);
         end
         
         function h_f = aux_plot(obj,varargin)
@@ -538,7 +563,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             % %                 es = sprintf('_isssz%d',issz(ix_sub));
             % %                 skipcases.difficulty = [-2,-1,+1,+2];
             % %                 h_f = sr_cell{ix_sub}.aux_plot('color',c,'es',es,'plotsinglerow',true,'skipcases',skipcases);
-            % %                 
+            % %
             % %                 drawnow;
             % %                 printForPub(gcf,h_f.Name,...
             % %                     'fformat',fig.fformat,'physicalSizeCM',[25,5],'savedir',fig.savedir,'doPrint',fig.doPrint);
@@ -599,9 +624,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             ix_change = find(arrayfun(@(ix) height(unique(p_mat_unique(:,ix))),1:size(p_mat_unique,2))>1);
             if length(ix_change)>1,warning('Not equipped to deal with multiple changes');
             else
-            name_change = p_mat_unique.Properties.VariableNames{ix_change};
-            name_change_label = name_change;
-            if length(name_change_label)>4,name_change_label = [name_change_label(1:4) '.'];end
+                name_change = p_mat_unique.Properties.VariableNames{ix_change};
+                name_change_label = name_change;
+                if length(name_change_label)>4,name_change_label = [name_change_label(1:4) '.'];end
             end
             
             
@@ -669,6 +694,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             p_mat = obj.ddm_cost_add_stim_dependencies(p_mat);
             
             p_mat_unique = unique(p_mat);
+            p_mat_unique(p_mat_unique.skip>0,:) = [];
+            
             p_mat_array = table2array(p_mat);
             
             case_nan = isnan(obj.data.rt)|isnan(obj.data.choice);
@@ -1140,7 +1167,12 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         function op = hddm_prob_ub(v,a,z)
             %"""Probability of hitting upper boundary."""
-            op = (exp(-2*a*z*v) - 1) / (exp(-2*a*v) - 1);
+            if v==0
+                %otherwise op = nan since division by 0
+                op = 0.5;
+            else
+                op = (exp(-2*a*z*v) - 1) / (exp(-2*a*v) - 1);
+            end
         end
         
         
