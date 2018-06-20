@@ -595,6 +595,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             p_mat = obj.ddm_cost_add_stim_dependencies(p_mat);
             
             p_mat_unique = unique(p_mat);
+            p_mat_unique(p_mat_unique.skip>0,:) = [];
+            
             p_mat_array = table2array(p_mat);
             
             case_nan = isnan(obj.data.rt)|isnan(obj.data.choice);
