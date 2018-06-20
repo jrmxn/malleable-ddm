@@ -51,6 +51,20 @@ classdef ddm_def_sz < ddm_def
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
             p_mat = ddm_cost_add_stim_dependencies@ddm_def(obj,p_mat);
             p_mat.difficulty = obj.data.difficulty;
+
+            % A bit ugly that this is here, but if specific difficulty is not in the
+            % model name, then set it to nan in p_mat so that the cost
+            % function does not use it.
+            case_skip = false(size(p_mat.difficulty));
+            model_def = obj.ddm_print_model(true);
+            for ix_diff = 1:length(obj.info.difficulties)
+                diff_ = obj.info.difficulties(ix_diff);
+                diffi_case = contains(model_def,obj.diff2drift(diff_));
+                if not(any(diffi_case))
+                    case_skip = case_skip|(p_mat.difficulty == diff_);
+                end
+            end
+            p_mat.skip(case_skip) = 1;  
         end
         
     end
@@ -163,6 +177,13 @@ classdef ddm_def_sz < ddm_def
             px = p;
             px.v = p.(diffi_str);
             [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana@ddm_def(px,rt);
+        end
+        
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,rt,dx)
+            diffi_str = ddm_def_sz.diff2drift(p.difficulty);
+            px = p;
+            px.v = p.(diffi_str);
+            [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm@ddm_def(px,rt,dx);
         end
         
         function diffi_str = diff2drift(diffi_val)
