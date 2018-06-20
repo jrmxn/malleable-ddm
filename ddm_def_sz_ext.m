@@ -46,10 +46,18 @@ classdef ddm_def_sz_ext < ddm_def_sz
     methods (Static)
         
         function  [pdf_,p_cr] = ddm_prt_ana(p,rt)
+            %this doesn't use leakage - just for initialisation
+            if isfield(p,'k')
+                if not(p.k==0),error('Non zero leak not allowed with this pdf method');end
+            end
             [pdf_, p_cr] = ddm_prt_ana@ddm_def_sz(p,rt);
         end
         
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana(p,rt)
+            %this doesn't use leakage - just for initialisation
+            if isfield(p,'k')
+                if not(p.k==0),error('Non zero leak not allowed with this pdf method');end
+            end
             [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana@ddm_def_sz(p,rt);
         end
         
