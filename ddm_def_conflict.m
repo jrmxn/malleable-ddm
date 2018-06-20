@@ -31,7 +31,7 @@ classdef ddm_def_conflict < ddm_def
                 p_mat.rtinco(ix_row_p_mat) = nanmean(sr_full(ix_sub).data.rt(case_correct&case_conflict));
                 p_mat.rtdiff(ix_row_p_mat) = p_mat.rtinco(ix_sub)-p_mat.rtcong(ix_sub);
             end
-
+            
         end
     end
     methods (Access = protected)
@@ -68,14 +68,14 @@ classdef ddm_def_conflict < ddm_def
     end
     methods (Static)
         
-        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_bru(p,lt,N_its)
+        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,vec_rt,vec_correct,td_tot,x] = ddm_pdf_bru(p,lt,N_its)
             
             rt = (lt(1:end-1)+lt(2:end))*0.5;
-
+            
             dt = lt(2)-lt(1);
-            T = lt(end)+dt;
+            T = lt(end);
             maxIterations = floor(T/dt);
-            if (length(lt)-1)~=maxIterations,error('Messed up time code');end
+            if (length(rt))~=maxIterations,error('Messed up time code');end
             %%
             %modification for conflict
             z = p.z - 0.5*(2*p.c-1)*p.zc;
@@ -84,9 +84,10 @@ classdef ddm_def_conflict < ddm_def
             x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
             
             %modification for conflict
-            V = repmat((p.v + p.sv*randn(N_its,1)),1,maxIterations);
-            CB = repmat(p.c*p.b*rt,N_its,1);
-            x_drift = V.*(1+CB)*dt;
+            %             V = repmat((p.v + p.sv*randn(N_its,1)),1,maxIterations);
+            %             CB = repmat(p.c*p.b*rt,N_its,1);
+            %             x_drift = V.*(1+CB)*dt;
+            x_drift = repmat((p.v + p.sv*randn(N_its,1)),1,maxIterations).*(1+repmat(p.c*p.b*rt,N_its,1))*dt;
             %%
             x = nan(N_its,maxIterations);
             x(:,1) = x0_trial;
