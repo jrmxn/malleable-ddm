@@ -786,17 +786,13 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             case_right(case_nan) = 0;
             case_right = logical(case_right);
             case_wrong = not(case_right);
+            case_wrong(case_nan) = false;
             lt  = 0:obj.s.dt:obj.s.T-obj.s.dt;
             for ix_p_config = 1:height(p_mat_unique)
                 px = table2struct(p_mat_unique(ix_p_config,:));
                 px_array = table2array(p_mat_unique(ix_p_config,:));
                 case_config = all(p_mat_array==px_array,2);
-                t_cr = obj.data.rt(case_right&case_config&not(case_nan));
-                t_cw = obj.data.rt(case_wrong&case_config&not(case_nan));
-                
-                
-                ix_cr = round(t_cr/obj.s.dt);
-                ix_cw = round(t_cw/obj.s.dt);
+
                 [~,~,rt,~,~,vec_rt_sim,vec_correct_sim_ix,td_tot,x] = obj.ddm_pdf_bru(px,lt,obj.s.nits);
                 
                 if ix_p_config == 1
@@ -811,7 +807,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 
                 for ix_trial = 1:height(obj.data)
                     
-                    if case_config(ix_trial)
+                    if case_config(ix_trial)&&not(case_nan(ix_trial))
                         case_samechoice = case_right(ix_trial)==vec_correct_sim_ix;
                         
                         case_near = all([...
