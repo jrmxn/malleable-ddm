@@ -608,6 +608,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             case_right(case_nan) = 0;
             case_right = logical(case_right);
             case_wrong = not(case_right);
+            case_wrong(case_nan) = false;
             
             %skipcases!
             fn = fieldnames(v.skipcases);
@@ -709,6 +710,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             case_right(case_nan) = 0;
             case_right = logical(case_right);
             case_wrong = not(case_right);
+            case_wrong(case_nan) = false;
             lt  = 0:obj.s.dt:obj.s.T-obj.s.dt;
             for ix_p_config = 1:height(p_mat_unique)
                 px = table2struct(p_mat_unique(ix_p_config,:));
