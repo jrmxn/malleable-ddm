@@ -74,27 +74,33 @@ classdef ddm_def_conflict < ddm_def
             
             dt = lt(2)-lt(1);
             T = lt(end);
-            maxIterations = floor(T/dt);
+            maxIterations = ceil(T/dt);
             if (length(rt))~=maxIterations,error('Messed up time code');end
             %%
             %modification for conflict
             z = p.z - 0.5*(2*p.c-1)*p.zc;
             x0 = z*p.a;
             x0_trial = (rand(N_its,1)-0.5)*(p.sz) + x0;%n.b. this one is uniform.
-            x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
-            
+            %%
+%             x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
             %modification for conflict
             %             V = repmat((p.v + p.sv*randn(N_its,1)),1,maxIterations);
             %             CB = repmat(p.c*p.b*rt,N_its,1);
             %             x_drift = V.*(1+CB)*dt;
-            x_drift = repmat((p.v + p.sv*randn(N_its,1)),1,maxIterations).*(1+repmat(p.c*p.b*rt,N_its,1))*dt;
+            %
+%             x = nan(N_its,maxIterations);
+%             x(:,1) = x0_trial;
+%             %in most places you could replace this with a cumsum
+%             for ix_t = 2:maxIterations
+%                 %need to check this before it gets used:
+%                 x(:,ix_t) = x(:,ix_t-1) + x_noise(:,ix_t) + x_drift(:,ix_t);
+%             end
             %%
-            x = nan(N_its,maxIterations);
+            % faster than loop and saves memory
+            x = randn(N_its,maxIterations)*(p.s)*sqrt(dt) + ...%noise 
+                + repmat((p.v + p.sv*randn(N_its,1)),1,maxIterations).*(1+repmat(p.c*p.b*rt,N_its,1))*dt;%drift
             x(:,1) = x0_trial;
-            for ix_t = 2:maxIterations
-                %need to check this before it gets used:
-                x(:,ix_t) = x(:,ix_t-1) + x_noise(:,ix_t) + x_drift(:,ix_t);
-            end
+            x = cumsum(x,2);
             %%
             x_threshold = +p.a;
             [~,x_upper]=sort(x>x_threshold,2,'descend');% should the sign here be the same????
