@@ -218,6 +218,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             
             obj.opt.dodoublefit = true;
             obj.opt.TolX = 1e-5;
+            obj.opt.TolFun = 1e-5;
             obj.opt.MaxIter = 50e3;
             obj.opt.parallelsearch = true;
             obj.opt.ps_AccelerateMesh = true;%should only do if smooth
@@ -322,9 +323,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             x_ub = obj.p2x(obj.s.xl,fit_init.p_ub);
             
             if strcmpi(obj.opt.computeAlgo,'PS')
-                
+                if not(isfield(obj.opt,'TolFun')),obj.opt.TolFun = obj.opt.TolX;end
                 minoptions = optimoptions(@patternsearch,'Display','iter',...
-                    'MaxIter',obj.opt.MaxIter,'TolFun',obj.opt.TolX,'TolX',obj.opt.TolX,...
+                    'MaxIter',obj.opt.MaxIter,'TolFun',obj.opt.TolFun,'TolX',obj.opt.TolX,...
                     'MaxFunEvals',obj.opt.MaxIter*2,'StepTolerance',1e-3,...
                     'InitialMeshSize',2,'AccelerateMesh',obj.opt.ps_AccelerateMesh,...
                     'UseParallel',obj.opt.parallelsearch,'UseCompletePoll',obj.opt.parallelsearch);%,
