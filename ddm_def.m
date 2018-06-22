@@ -507,7 +507,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             save(f_savepath,'obj_');
         end
         
-        function [t_ups,t_dow,p_ups,p_dow] = ddm_data_draw(obj,p,N)
+        function [t_ups,t_dow,p_ups,p_dow,correct_side] = ddm_data_draw(obj,p,N)
             if contains(func2str(obj.ddm_pdf),'ddm_prt_ana')
                 error(['Need a full pdf generator from which to draw.', ...
                     'Change the pdf function handle.',...
@@ -515,7 +515,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
             lt  = 0:obj.s.dt:obj.s.T-obj.s.dt;
             
-            [~,~,t,cdf_dow,cdf_ups] = obj.ddm_pdf(p,lt);
+            [~,~,t,cdf_dow,cdf_ups,correct_side] = obj.ddm_pdf(p,lt);
             [t_ups,t_dow,p_ups,p_dow] = obj.ddm_pdf2rt(cdf_ups,cdf_dow,t,N);
         end
         
@@ -758,6 +758,162 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             nll_app = -ll_app;
         end
         
+        function  [p_mat_unique,pct] = ddm_get_prctile( obj, varargin)
+            warning('Need to go through this function carefully...');
+            %this method generates the expected DV trace for a given trial
+            d.N = 100;
+            d.pct = [10,25,50,75,90];
+            d.reloaddata = false;
+            %%
+            v = inputParser;
+            addOptional(v,'N',d.N)
+            addOptional(v,'pct',d.pct)
+            addOptional(v,'reloaddata',d.reloaddata)
+            parse(v,varargin{:});
+            %%
+            v = d;clear d;
+            %%
+%             backwards compatability (temporary)
+            if v.reloaddata
+                get_data(obj);
+            end
+            %%
+            if isstruct(v.pct)
+                pct.dow = v.pct.dow;
+                pct.ups = v.pct.ups;
+            else
+                pct.ups = v.pct;
+                pct.dow = v.pct;
+            end
+            %
+            p = obj.fit(end).p;
+            %
+            p_mat = struct2table(repmat(p,height(obj.data),1));
+            
+            %Add trial-trial stimulus dependencies (e.g. coherence, conflict etc.)
+            p_mat = obj.ddm_cost_add_stim_dependencies(p_mat);
+            
+            p_mat_unique = unique(p_mat);
+            p_mat_unique(p_mat_unique.skip>0,:) = [];
+            
+            p_mat_array = table2array(p_mat);
+            
+            case_nan = isnan(obj.data.rt)|isnan(obj.data.choice);
+            case_right = obj.data.choice;
+            %this is ugly - setting nan to zero so that I can use them as
+            %logicals.case_nnan is used to exclude them later though so ok.
+            case_right(case_nan) = 0;
+            case_right = logical(case_right);
+            case_wrong = not(case_right);
+            case_wrong(case_nan) = false;
+            lt  = 0:obj.s.dt:obj.s.T-obj.s.dt;
+            
+            %get subject data
+            %             d_rt = obj.data.rt.*(obj.data.choice-0.5)*2;
+          D_rt_ups = nan(height(p_mat_unique),length(pct.ups));
+          S_rt_ups = D_rt_ups;
+          D_rt_dow = nan(height(p_mat_unique),length(pct.dow));
+          S_rt_dow = D_rt_dow;
+          D_ac_ups = D_rt_dow;
+          S_ac_ups = D_rt_dow;
+          
+          D_rtavg_ups = nan(height(p_mat_unique),1);
+          D_rtavg_dow = D_rtavg_ups;
+          S_rtavg_ups = D_rtavg_ups;
+          S_rtavg_dow = D_rtavg_ups;
+          
+          D_ac_avg = D_rtavg_ups;
+          S_ac_avg = S_rtavg_ups;
+          
+            for ix_p_config = 1:height(p_mat_unique)
+                px = table2struct(p_mat_unique(ix_p_config,:));
+                px_array = table2array(p_mat_unique(ix_p_config,:));
+                case_config = all(p_mat_array==px_array,2);
+                
+                
+                
+                t_ups = obj.data.rt(case_right&case_config&not(case_nan));
+                t_dow = obj.data.rt(case_wrong&case_config&not(case_nan));
+                
+                h_pdf_temp = obj.ddm_pdf;%get the current pdf function
+                obj.ddm_pdf = @(a,b) obj.ddm_pdf_ana(a,b);%change it so we can draw from it
+                [t_ups_sim,t_dow_sim,~,~,correct_side] = obj.ddm_data_draw(px,v.N);
+                obj.ddm_pdf = h_pdf_temp;%put it back
+                %figure out correct/incorrect
+                t_sim = [t_ups_sim,t_dow_sim];
+                c_sim = [true(size(t_ups_sim)),false(size(t_dow_sim))];
+                if correct_side==-1
+                    c_sim = not(c_sim);
+                elseif correct_side==0
+                    c_sim = randi(2,size(c_sim))-1;
+                end
+                nan_sim = isnan(t_sim);
+                t_sim(nan_sim) = [];
+                c_sim(nan_sim) = [];
+                
+                
+                D_rt_ups(ix_p_config,:) = prctile(t_ups,pct.ups);
+                S_rt_ups(ix_p_config,:) = prctile(t_ups_sim,pct.ups);
+                
+                D_rt_dow(ix_p_config,:) = prctile(t_dow,pct.dow);
+                S_rt_dow(ix_p_config,:) = prctile(t_dow_sim,pct.dow);
+                
+%                 D_ac_ups(ix_p_config) =
+                sel_data = obj.data(case_config&not(case_nan),:);
+                pct_ups_aug = [0,pct.ups,100];
+                for ix_pct = 2:length(pct_ups_aug)
+                    
+                    lb = prctile(sel_data.rt,pct_ups_aug(ix_pct-1));
+                    ub = prctile(sel_data.rt,pct_ups_aug(ix_pct));
+                    case_rt = (sel_data.rt>lb)&(sel_data.rt<ub);
+                    D_ac_ups(ix_p_config,ix_pct-1) = mean(sel_data.correct(case_rt));
+                    
+                    lb = prctile(t_sim,pct_ups_aug(ix_pct-1));
+                    ub = prctile(t_sim,pct_ups_aug(ix_pct));
+                    case_rt = (t_sim>lb)&(t_sim<ub);
+                    S_ac_ups(ix_p_config,ix_pct-1) = mean(c_sim(case_rt));
+%                     obj.data.rt(
+                end
+                
+                D_ac_avg(ix_p_config) = mean(sel_data.correct);
+                S_ac_avg(ix_p_config) = mean(c_sim);
+                
+                D_rtavg_ups(ix_p_config) = mean(t_ups);
+                D_rtavg_dow(ix_p_config) = mean(t_dow);
+                S_rtavg_ups(ix_p_config) = mean(t_ups_sim);
+                S_rtavg_dow(ix_p_config) = mean(t_dow_sim);
+            end
+            
+            
+            % Merge percentile back into D_dow and S_dow
+            for ix_pct = 1:size(D_rt_ups,2)
+                col_name = sprintf('rt_p%02d_ups_dat',pct.ups(ix_pct));
+                p_mat_unique.(col_name) = D_rt_ups(:,ix_pct);
+                col_name = sprintf('rt_p%02d_ups_sim',pct.ups(ix_pct));
+                p_mat_unique.(col_name) = S_rt_ups(:,ix_pct);
+                
+                col_name = sprintf('ac_p%02d_ups_dat',pct.ups(ix_pct));
+                p_mat_unique.(col_name) = D_ac_ups(:,ix_pct);
+                col_name = sprintf('ac_p%02d_ups_sim',pct.ups(ix_pct));
+                p_mat_unique.(col_name) = S_ac_ups(:,ix_pct);
+                
+            end
+            for ix_pct = 1:size(D_rt_dow,2)
+                col_name = sprintf('rt_p%02d_dow_dat',pct.dow(ix_pct));
+                p_mat_unique.(col_name) = D_rt_dow(:,ix_pct);
+                col_name = sprintf('rt_p%02d_dow_sim',pct.dow(ix_pct));
+                p_mat_unique.(col_name) = S_rt_dow(:,ix_pct);
+            end
+            p_mat_unique.rtavg_ups_dat = D_rtavg_ups;
+            p_mat_unique.rtavg_dow_dat = D_rtavg_dow;
+            
+            p_mat_unique.rtavg_ups_sim = S_rtavg_ups;
+            p_mat_unique.rtavg_dow_sim = S_rtavg_dow;
+            
+            p_mat_unique.acavg_ups_dat = D_ac_avg;
+            p_mat_unique.acavg_ups_sim = S_ac_avg;
+            %
+        end
         function  [dv_mea,dv_sem,dv_n,rt,dv_ndt_mea] = ddm_eeg_match( obj, varargin)
             %this method generates the expected DV trace for a given trial
             d.dt_win = 0.01;
@@ -795,8 +951,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 px = table2struct(p_mat_unique(ix_p_config,:));
                 px_array = table2array(p_mat_unique(ix_p_config,:));
                 case_config = all(p_mat_array==px_array,2);
-
-                [~,~,rt,~,~,vec_rt_sim,vec_correct_sim_ix,td_tot,x] = obj.ddm_pdf_bru(px,lt,obj.s.nits);
+                
+                [~,~,rt,~,~,~,vec_rt_sim,vec_correct_sim_ix,td_tot,x] = obj.ddm_pdf_bru(px,lt,obj.s.nits);
                 
                 if ix_p_config == 1
                     if size(x,2)~=length(rt)
@@ -811,6 +967,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 for ix_trial = 1:height(obj.data)
                     
                     if case_config(ix_trial)&&not(case_nan(ix_trial))
+                        %need to go through whole code and make it
+                        %right/wrong agnostic
                         case_samechoice = case_right(ix_trial)==vec_correct_sim_ix;
                         
                         case_near = all([...
@@ -956,14 +1114,14 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             pdf_ = arrayfun(@(x) h_pdf(x),+rt);
             
         end
-        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana(p,rt)
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ddm_pdf_ana(p,rt)
             if any(rt<0),error(['-rt is only usable for ddm_prt_ana.\n' ...
                     'In normal pdf functions you ask for +rt, but you get '...
                     'out pdf for both choices. Maybe this should be changed '...
                     'in future. Also this check probably takes time since '...
                     'rt is often large.']);
             end
-            
+            correct_side = 1;%assume upper bound is correct
             err = 1e-8;
             
             h_pdf = @(x) ddm_def.hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
@@ -1007,8 +1165,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 
             end
         end
-        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,vec_rt,vec_correct,td_tot,x] = ddm_pdf_bru(p,lt,N_its)
-            
+        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side,vec_rt,vec_correct,td_tot,x] = ddm_pdf_bru(p,lt,N_its)
+            correct_side = 1;
             dt = lt(2)-lt(1);
             T = lt(end)+dt;
             maxIterations = floor(T/dt);
@@ -1063,7 +1221,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             rt = (lt(1:end-1)+lt(2:end))*0.5;
         end
         
-        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,dx)
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ddm_pdf_trm(p,lt,dx)
+            correct_side = 1;
             %
             dt = lt(2)-lt(1);
             f = 5;%increasing this helps (as does decreasing dx)
