@@ -61,10 +61,11 @@ classdef ddm_def_sz_ext < ddm_def_sz
             [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana@ddm_def_sz(p,rt);
         end
         
-        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,dx)
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ddm_pdf_trm(p,lt,dx)
             %
             diffi_str = ddm_def_sz.diff2drift(p.difficulty);
             p.v = p.(diffi_str);
+            correct_side = sign(p.v);
             
             dt = lt(2)-lt(1);
             f = 5;%obj.s.x_bound_scale;%not sure what the consequence of shrinking this is
