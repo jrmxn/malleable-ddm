@@ -32,12 +32,12 @@ classdef ddm_def_sz_ext < ddm_def_sz
             
             p_ = 'k';
             modelkey_var{ix} = (p_);ix = ix+1;
-            g_sd = 0.1;
-            pd_hn = makedist('HalfNormal','mu',0,'sigma',g_sd);
+            g_sd = 0.5;
+            pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
-            plbound_.(p_) = -5;
-            pubound_.(p_) = +5;
+            plbound_.(p_) = -12;
+            pubound_.(p_) = +12;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
         end
@@ -53,12 +53,12 @@ classdef ddm_def_sz_ext < ddm_def_sz
             [pdf_, p_cr] = ddm_prt_ana@ddm_def_sz(p,rt);
         end
         
-        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana(p,rt)
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ddm_pdf_ana(p,rt)
             %this doesn't use leakage - just for initialisation
             if isfield(p,'k')
                 if not(p.k==0),error('Non zero leak not allowed with this pdf method');end
             end
-            [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana@ddm_def_sz(p,rt);
+            [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ddm_pdf_ana@ddm_def_sz(p,rt);
         end
         
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ddm_pdf_trm(p,lt,dx)
