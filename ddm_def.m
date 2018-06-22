@@ -835,10 +835,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 t_ups = obj.data.rt(case_right&case_config&not(case_nan));
                 t_dow = obj.data.rt(case_wrong&case_config&not(case_nan));
                 
-                h_pdf_temp = obj.ddm_pdf;%get the current pdf function
-                obj.ddm_pdf = @(a,b) obj.ddm_pdf_ana(a,b);%change it so we can draw from it
                 [t_ups_sim,t_dow_sim,~,~,correct_side] = obj.ddm_data_draw(px,v.N);
-                obj.ddm_pdf = h_pdf_temp;%put it back
+                
                 %figure out correct/incorrect
                 t_sim = [t_ups_sim,t_dow_sim];
                 c_sim = [true(size(t_ups_sim)),false(size(t_dow_sim))];
