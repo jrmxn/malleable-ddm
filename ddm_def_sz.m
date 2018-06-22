@@ -172,18 +172,20 @@ classdef ddm_def_sz < ddm_def
             [pdf_, p_cr] = ddm_prt_ana@ddm_def(px,rt);
         end
         
-        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana(p,rt)
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ddm_pdf_ana(p,rt)
             diffi_str = ddm_def_sz.diff2drift(p.difficulty);
             px = p;
             px.v = p.(diffi_str);
             [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_ana@ddm_def(px,rt);
+            correct_side = sign(px.v);
         end
         
-        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,rt,dx)
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ddm_pdf_trm(p,rt,dx)
             diffi_str = ddm_def_sz.diff2drift(p.difficulty);
             px = p;
             px.v = p.(diffi_str);
             [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm@ddm_def(px,rt,dx);
+            correct_side = sign(px.v);
         end
         
         function diffi_str = diff2drift(diffi_val)
