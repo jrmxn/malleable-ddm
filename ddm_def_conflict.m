@@ -68,8 +68,8 @@ classdef ddm_def_conflict < ddm_def
     end
     methods (Static)
         
-        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,vec_rt,vec_correct,td_tot,x] = ddm_pdf_bru(p,lt,N_its)
-            
+        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side,vec_rt,vec_correct,td_tot,x] = ddm_pdf_bru(p,lt,N_its)
+            correct_side = 1;
             rt = (lt(1:end-1)+lt(2:end))*0.5;
             
             dt = lt(2)-lt(1);
@@ -137,7 +137,8 @@ classdef ddm_def_conflict < ddm_def
             pdf_dow = diff(cdf_dow)/dt;
         end
         
-        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,dx)
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ddm_pdf_trm(p,lt,dx)
+            correct_side = 1;
             %
             dt = lt(2)-lt(1);
             f = 5;%obj.s.x_bound_scale;%not sure what the consequence of shrinking this is
