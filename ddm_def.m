@@ -761,19 +761,25 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function  [p_mat_unique,pct] = ddm_get_prctile( obj, varargin)
             warning('Need to go through this function carefully...');
             %this method generates the expected DV trace for a given trial
-            d.N = 100;
+            d.N = 2000;
             d.pct = [10,25,50,75,90];
             d.reloaddata = false;
+            d.choice_or_accuracy = 'choice';
             %%
             v = inputParser;
             addOptional(v,'N',d.N)
             addOptional(v,'pct',d.pct)
             addOptional(v,'reloaddata',d.reloaddata)
+            addOptional(v,'choice_or_accuracy',d.choice_or_accuracy)
             parse(v,varargin{:});
             %%
-            v = d;clear d;
+            v = v.Results;d = [];clear d;
             %%
-%             backwards compatability (temporary)
+            if not(strcmpi(v.choice_or_accuracy,'accuracy')|strcmpi(v.choice_or_accuracy,'choice'))
+                error('Wrong choice_or_accuracy term');
+            end
+            %%
+            %             backwards compatability (temporary)
             if v.reloaddata
                 get_data(obj);
             end
@@ -799,56 +805,54 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             p_mat_array = table2array(p_mat);
             
             case_nan = isnan(obj.data.rt)|isnan(obj.data.choice);
-            case_right = obj.data.choice;
+            case_ups = obj.data.choice;
             %this is ugly - setting nan to zero so that I can use them as
             %logicals.case_nnan is used to exclude them later though so ok.
-            case_right(case_nan) = 0;
-            case_right = logical(case_right);
-            case_wrong = not(case_right);
-            case_wrong(case_nan) = false;
+            case_ups(case_nan) = 0;
+            case_ups = logical(case_ups);
+            case_dow = not(case_ups);
+            case_dow(case_nan) = false;
             lt  = 0:obj.s.dt:obj.s.T-obj.s.dt;
             
             %get subject data
             %             d_rt = obj.data.rt.*(obj.data.choice-0.5)*2;
-          D_rt_ups = nan(height(p_mat_unique),length(pct.ups));
-          S_rt_ups = D_rt_ups;
-          D_rt_dow = nan(height(p_mat_unique),length(pct.dow));
-          S_rt_dow = D_rt_dow;
-          D_ac_ups = D_rt_dow;
-          S_ac_ups = D_rt_dow;
-          
-          D_rtavg_ups = nan(height(p_mat_unique),1);
-          D_rtavg_dow = D_rtavg_ups;
-          S_rtavg_ups = D_rtavg_ups;
-          S_rtavg_dow = D_rtavg_ups;
-          
-          D_ac_avg = D_rtavg_ups;
-          S_ac_avg = S_rtavg_ups;
-          
+            D_rt_ups = nan(height(p_mat_unique),length(pct.ups));
+            S_rt_ups = D_rt_ups;
+            D_rt_dow = nan(height(p_mat_unique),length(pct.dow));
+            S_rt_dow = D_rt_dow;
+            D_ac_ups = D_rt_dow;
+            S_ac_ups = D_rt_dow;
+            
+            D_rtavg_ups = nan(height(p_mat_unique),1);
+            D_rtavg_dow = D_rtavg_ups;
+            S_rtavg_ups = D_rtavg_ups;
+            S_rtavg_dow = D_rtavg_ups;
+            
+            D_ac_avg = D_rtavg_ups;
+            S_ac_avg = S_rtavg_ups;
+            
             for ix_p_config = 1:height(p_mat_unique)
                 px = table2struct(p_mat_unique(ix_p_config,:));
                 px_array = table2array(p_mat_unique(ix_p_config,:));
                 case_config = all(p_mat_array==px_array,2);
                 
-                
-                
-                t_ups = obj.data.rt(case_right&case_config&not(case_nan));
-                t_dow = obj.data.rt(case_wrong&case_config&not(case_nan));
+                t_ups = obj.data.rt(case_ups&case_config&not(case_nan));
+                t_dow = obj.data.rt(case_dow&case_config&not(case_nan));
                 
                 [t_ups_sim,t_dow_sim,~,~,correct_side] = obj.ddm_data_draw(px,v.N);
-                
                 %figure out correct/incorrect
                 t_sim = [t_ups_sim,t_dow_sim];
                 c_sim = [true(size(t_ups_sim)),false(size(t_dow_sim))];
-                if correct_side==-1
-                    c_sim = not(c_sim);
-                elseif correct_side==0
-                    c_sim = randi(2,size(c_sim))-1;
+                if strcmpi(v.choice_or_accuracy,'accuracy')
+                    if correct_side==-1
+                        c_sim = not(c_sim);
+                    elseif correct_side==0
+                        c_sim = randi(2,size(c_sim))-1;
+                    end
                 end
                 nan_sim = isnan(t_sim);
                 t_sim(nan_sim) = [];
                 c_sim(nan_sim) = [];
-                
                 
                 D_rt_ups(ix_p_config,:) = prctile(t_ups,pct.ups);
                 S_rt_ups(ix_p_config,:) = prctile(t_ups_sim,pct.ups);
@@ -856,7 +860,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 D_rt_dow(ix_p_config,:) = prctile(t_dow,pct.dow);
                 S_rt_dow(ix_p_config,:) = prctile(t_dow_sim,pct.dow);
                 
-%                 D_ac_ups(ix_p_config) =
+                %                 D_ac_ups(ix_p_config) =
                 sel_data = obj.data(case_config&not(case_nan),:);
                 pct_ups_aug = [0,pct.ups,100];
                 for ix_pct = 2:length(pct_ups_aug)
@@ -864,16 +868,24 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     lb = prctile(sel_data.rt,pct_ups_aug(ix_pct-1));
                     ub = prctile(sel_data.rt,pct_ups_aug(ix_pct));
                     case_rt = (sel_data.rt>lb)&(sel_data.rt<ub);
-                    D_ac_ups(ix_p_config,ix_pct-1) = mean(sel_data.correct(case_rt));
+                    if strcmpi(v.choice_or_accuracy,'accuracy')
+                        D_ac_ups(ix_p_config,ix_pct-1) = mean(sel_data.correct(case_rt));
+                    elseif strcmpi(v.choice_or_accuracy,'choice')
+                        D_ac_ups(ix_p_config,ix_pct-1) = mean(sel_data.choice(case_rt));
+                    end
                     
                     lb = prctile(t_sim,pct_ups_aug(ix_pct-1));
                     ub = prctile(t_sim,pct_ups_aug(ix_pct));
                     case_rt = (t_sim>lb)&(t_sim<ub);
                     S_ac_ups(ix_p_config,ix_pct-1) = mean(c_sim(case_rt));
-%                     obj.data.rt(
+                    %                     obj.data.rt(
                 end
                 
-                D_ac_avg(ix_p_config) = mean(sel_data.correct);
+                if strcmpi(v.choice_or_accuracy,'accuracy')
+                    D_ac_avg(ix_p_config) = mean(sel_data.correct);
+                elseif strcmpi(v.choice_or_accuracy,'choice')
+                    D_ac_avg(ix_p_config) = mean(sel_data.choice);
+                end
                 S_ac_avg(ix_p_config) = mean(c_sim);
                 
                 D_rtavg_ups(ix_p_config) = mean(t_ups);
@@ -922,7 +934,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             addOptional(v,'avgmet',d.avgmet)
             parse(v,varargin{:});
             %%
-            v = d;clear d;
+            v = v.Results;d = [];clear d;
             %
             p = obj.fit(end).p;
             %
