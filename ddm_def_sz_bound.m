@@ -8,7 +8,7 @@ classdef ddm_def_sz_bound < ddm_def_sz
     methods
         function obj = ddm_def_sz_bound(obj)
             %ovewrite model class property
-            obj.modelclass = 'sz_ext';
+            obj.modelclass = 'sz_bound';
             obj.path_data = fullfile('testing','testing_sz.csv');
             obj.info.difficulties = [-5:5];
             %             obj.info.name_channel = {'pre_alpha_O','pre_ssvep_O','pre_random_O','pre_mlfr_C','pre_theta_FC','nlrt'};
@@ -35,7 +35,7 @@ classdef ddm_def_sz_bound < ddm_def_sz
             g_sd = 2.5;
             pd_hn = makedist('HalfNormal','sigma',g_sd);
             pran_.(p_) = pd_hn.random;
-            pdef_.(p_) = 0.0;
+            pdef_.(p_) = 3.0;
             plbound_.(p_) = 0;
             pubound_.(p_) = +6;
             prior_.(p_) = @(x) pdf(pd_hn,x);
