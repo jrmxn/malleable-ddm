@@ -746,9 +746,13 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             
             
             ll_vec = log(p_RT_and_accuracy);
+            if all(isnan(ll_vec))
+                ll_app = Inf;
+            else
             ll_app = nansum(ll_vec);%nan are values that are not in condition
+            end
             %
-            if isnan(ll_app),ll_app=-inf;end
+            if isnan(ll_app),ll_app=inf;end
             k = obj.s.fit_n+1;%number of free params + 1 for fixed noise
             n = sum(not(isnan(p_RT_and_accuracy)));
             %
