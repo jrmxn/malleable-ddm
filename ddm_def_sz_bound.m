@@ -42,7 +42,7 @@ classdef ddm_def_sz_bound < ddm_def_sz
             
             p_ = 'lambda';
             modelkey_var{ix} = (p_);ix = ix+1;
-            g_sd = 3;
+            g_sd = 2;
             pd_hn = makedist('HalfNormal','sigma',g_sd);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
@@ -52,7 +52,7 @@ classdef ddm_def_sz_bound < ddm_def_sz
             
             p_ = 'ap_lb';
             modelkey_var{ix} = (p_);ix = ix+1;
-            g_sd = 0.25;
+            g_sd = 0.1;
             pd_hn = makedist('HalfNormal','sigma',g_sd);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
@@ -62,7 +62,7 @@ classdef ddm_def_sz_bound < ddm_def_sz
             
             p_ = 'ap_ub';
             modelkey_var{ix} = (p_);ix = ix+1;
-            g_sd = 0.25;
+            g_sd = 0.1;
             pd_hn = makedist('HalfNormal','sigma',g_sd);
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
