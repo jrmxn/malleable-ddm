@@ -57,7 +57,7 @@ classdef ddm_def_sz_bound < ddm_def_sz
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
             plbound_.(p_) = 0;
-            pubound_.(p_) = +1;
+            pubound_.(p_) = +0.5;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
             p_ = 'ap_ub';
@@ -67,7 +67,7 @@ classdef ddm_def_sz_bound < ddm_def_sz
             pran_.(p_) = pd_hn.random;
             pdef_.(p_) = 0.0;
             plbound_.(p_) = 0;
-            pubound_.(p_) = +1;
+            pubound_.(p_) = +0.5;
             prior_.(p_) = @(x) pdf(pd_hn,x);
            
             
@@ -158,7 +158,7 @@ classdef ddm_def_sz_bound < ddm_def_sz
                 k = p.k;
                 
                 f_cb_lb = @(t) (1-exp(-(t/lambda).^k))*ap_lb;
-                f_cb_ub = @(t) a - (1-exp(-(t/lambda).^k))*ap_ub;
+                f_cb_ub = @(t) p.a - (1-exp(-(t/lambda).^k))*ap_ub;
                 
                 
                 pMat(:,1) = zn;
@@ -169,10 +169,11 @@ classdef ddm_def_sz_bound < ddm_def_sz
                     A = (1/sqrt(2*pi*(sig^2)))*exp(-((xvm_probe - xvm_expect).^2)/(2*(sig^2)));
                     An = A./repmat(sum(A,1),length(xz),1);
                     An(isnan(An))=0;
-                    
-                    An(:,xz>f_cb_ub(lt(ix_t))) = 0;
+                    ub = f_cb_ub(lt(ix_t));
+                    lb = f_cb_lb(lt(ix_t));
+                    An(:,xz>ub) = 0;
                     An(1:len_e_ups,1:len_e_ups) = e_ups;
-                    An(:,xz<f_cb_lb(lt(ix_t))) = 0;
+                    An(:,xz<lb) = 0;
                     An(end-len_e_dow+1:end,end-len_e_dow+1:end) = e_dow;
                     
                     zn = An*zn;
