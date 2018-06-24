@@ -32,11 +32,11 @@ classdef ddm_def_sz_bound < ddm_def_sz
             
             p_ = 'k';
             modelkey_var{ix} = (p_);ix = ix+1;
-            g_sd = 2.5;
-            pd_hn = makedist('HalfNormal','sigma',g_sd);
+            g_sd = 1;
+            pd_hn = makedist('HalfNormal','mu',1,'sigma',g_sd);
             pran_.(p_) = pd_hn.random;
-            pdef_.(p_) = 3.0;
-            plbound_.(p_) = 0;
+            pdef_.(p_) = 2.0;
+            plbound_.(p_) = 1;
             pubound_.(p_) = +6;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             
