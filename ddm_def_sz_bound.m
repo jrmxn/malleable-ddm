@@ -69,6 +69,16 @@ classdef ddm_def_sz_bound < ddm_def_sz
             plbound_.(p_) = 0;
             pubound_.(p_) = +0.5;
             prior_.(p_) = @(x) pdf(pd_hn,x);
+            
+            p_ = 'ap';
+            modelkey_var{ix} = (p_);ix = ix+1;
+            g_sd = 0.1;
+            pd_hn = makedist('HalfNormal','sigma',g_sd);
+            pran_.(p_) = pd_hn.random;
+            pdef_.(p_) = 0.0;
+            plbound_.(p_) = 0;
+            pubound_.(p_) = +0.5;
+            prior_.(p_) = @(x) pdf(pd_hn,x);
            
             
         end
@@ -152,13 +162,17 @@ classdef ddm_def_sz_bound < ddm_def_sz
                 len_e_ups = length(e_ups);
                 len_e_dow = length(e_dow);
                 
+                if not(isfield(p,'ap'))
+                    p.ap = 0;
+                end                
                 lambda = p.lambda;
                 ap_ub = p.ap_ub;
                 ap_lb = p.ap_lb;
+                ap = p.ap;
                 k = p.k;
                 
-                f_cb_lb = @(t) (1-exp(-(t/lambda).^k))*ap_lb;
-                f_cb_ub = @(t) p.a - (1-exp(-(t/lambda).^k))*ap_ub;
+                f_cb_lb = @(t) (1-exp(-(t/lambda).^k))*ap_lb + (1-exp(-(t/lambda).^k))*ap;
+                f_cb_ub = @(t) p.a - (1-exp(-(t/lambda).^k))*ap_ub - (1-exp(-(t/lambda).^k))*ap;
                 
                 
                 pMat(:,1) = zn;
