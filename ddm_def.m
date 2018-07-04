@@ -875,7 +875,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     ub = prctile(sel_data.rt,pct_ups_aug(ix_pct));
                     case_rt = (sel_data.rt>lb)&(sel_data.rt<ub);
                     
-                    D_ac_ups(ix_p_config,ix_pct-1) = mean(sel_data.(choice_feature)(case_rt));
+                    D_ac_ups(ix_p_config,ix_pct-1) = mean(sel_data.(v.choice_feature)(case_rt));
                     
                     lb = prctile(t_sim,pct_ups_aug(ix_pct-1));
                     ub = prctile(t_sim,pct_ups_aug(ix_pct));
@@ -885,7 +885,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 end
                 
                 
-                D_ac_avg(ix_p_config) = mean(sel_data.(choice_feature));
+                D_ac_avg(ix_p_config) = mean(sel_data.(v.choice_feature));
                 
                 S_ac_avg(ix_p_config) = mean(c_sim);
                 
