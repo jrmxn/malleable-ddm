@@ -826,8 +826,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             S_rt_ups = D_rt_ups;
             D_rt_dow = nan(height(p_mat_unique),length(pct.dow));
             S_rt_dow = D_rt_dow;
-            D_ac_ups = D_rt_dow;
-            S_ac_ups = D_rt_dow;
+            D_ac_ups = D_rt_ups;
+            S_ac_ups = D_rt_ups;
+            D_ac_dow = D_rt_dow;
+            S_ac_dow = D_rt_dow;
             
             D_rtavg_ups = nan(height(p_mat_unique),1);
             D_rtavg_dow = D_rtavg_ups;
@@ -870,19 +872,31 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 sel_data = obj.data(case_config&not(case_nan),:);
                 pct_ups_aug = [0,pct.ups,100];
                 for ix_pct = 2:length(pct_ups_aug)
-                    
+
                     lb = prctile(sel_data.rt,pct_ups_aug(ix_pct-1));
                     ub = prctile(sel_data.rt,pct_ups_aug(ix_pct));
-                    case_rt = (sel_data.rt>lb)&(sel_data.rt<ub);
-                    
+                    case_rt = (sel_data.rt>lb)&(sel_data.rt<=ub);
                     D_ac_ups(ix_p_config,ix_pct-1) = mean(sel_data.(v.choice_feature)(case_rt));
                     
                     lb = prctile(t_sim,pct_ups_aug(ix_pct-1));
                     ub = prctile(t_sim,pct_ups_aug(ix_pct));
                     case_rt = (t_sim>lb)&(t_sim<ub);
                     S_ac_ups(ix_p_config,ix_pct-1) = mean(c_sim(case_rt));
-                    %                     obj.data.rt(
                 end
+                pct_dow_aug = [0,pct.dow,100];
+                for ix_pct = 2:length(pct_dow_aug)
+
+                    lb = prctile(sel_data.rt,pct_dow_aug(ix_pct-1));
+                    ub = prctile(sel_data.rt,pct_dow_aug(ix_pct));
+                    case_rt = (sel_data.rt>lb)&(sel_data.rt<=ub);
+                    D_ac_dow(ix_p_config,ix_pct-1) = mean(sel_data.(v.choice_feature)(case_rt));
+                    
+                    lb = prctile(t_sim,pct_dow_aug(ix_pct-1));
+                    ub = prctile(t_sim,pct_dow_aug(ix_pct));
+                    case_rt = (t_sim>lb)&(t_sim<=ub);
+                    S_ac_dow(ix_p_config,ix_pct-1) = mean(c_sim(case_rt));
+                end
+                
                 
                 
                 D_ac_avg(ix_p_config) = mean(sel_data.(v.choice_feature));
@@ -914,6 +928,11 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 p_mat_unique.(col_name) = D_rt_dow(:,ix_pct);
                 col_name = sprintf('rt_p%02d_dow_sim',pct.dow(ix_pct));
                 p_mat_unique.(col_name) = S_rt_dow(:,ix_pct);
+                
+                col_name = sprintf('ac_p%02d_dow_dat',pct.dow(ix_pct));
+                p_mat_unique.(col_name) = D_ac_dow(:,ix_pct);
+                col_name = sprintf('ac_p%02d_dow_sim',pct.dow(ix_pct));
+                p_mat_unique.(col_name) = S_ac_dow(:,ix_pct);
             end
             p_mat_unique.rtavg_ups_dat = D_rtavg_ups;
             p_mat_unique.rtavg_dow_dat = D_rtavg_dow;
