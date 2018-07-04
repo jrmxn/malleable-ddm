@@ -749,7 +749,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             if all(isnan(ll_vec))
                 ll_app = Inf;
             else
-            ll_app = nansum(ll_vec);%nan are values that are not in condition
+                ll_app = nansum(ll_vec);%nan are values that are not in condition
             end
             %
             if isnan(ll_app),ll_app=inf;end
@@ -768,20 +768,22 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             d.N = 2000;
             d.pct = [10,25,50,75,90];
             d.reloaddata = false;
-            d.choice_or_accuracy = 'choice';
+            d.choice_feature = 'choice';
+            d.wrt_accuracy = false;
             %%
             v = inputParser;
             addOptional(v,'N',d.N)
             addOptional(v,'pct',d.pct)
             addOptional(v,'reloaddata',d.reloaddata)
-            addOptional(v,'choice_or_accuracy',d.choice_or_accuracy)
+            addOptional(v,'choice_feature',d.choice_feature)
+            addOptional(v,'wrt_accuracy',d.wrt_accuracy)
             parse(v,varargin{:});
             %%
             v = v.Results;d = [];clear d;
             %%
-            if not(strcmpi(v.choice_or_accuracy,'accuracy')|strcmpi(v.choice_or_accuracy,'choice'))
-                error('Wrong choice_or_accuracy term');
-            end
+            %             if not(strcmpi(v.choice_feature,'accuracy')|strcmpi(v.choice_feature,'choice'))
+            %                 error('Wrong choice_feature term');
+            %             end
             %%
             %             backwards compatability (temporary)
             if v.reloaddata
@@ -847,7 +849,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 %figure out correct/incorrect
                 t_sim = [t_ups_sim,t_dow_sim];
                 c_sim = [true(size(t_ups_sim)),false(size(t_dow_sim))];
-                if strcmpi(v.choice_or_accuracy,'accuracy')
+                if v.wrt_accuracy
                     if correct_side==-1
                         c_sim = not(c_sim);
                     elseif correct_side==0
@@ -872,11 +874,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     lb = prctile(sel_data.rt,pct_ups_aug(ix_pct-1));
                     ub = prctile(sel_data.rt,pct_ups_aug(ix_pct));
                     case_rt = (sel_data.rt>lb)&(sel_data.rt<ub);
-                    if strcmpi(v.choice_or_accuracy,'accuracy')
-                        D_ac_ups(ix_p_config,ix_pct-1) = mean(sel_data.correct(case_rt));
-                    elseif strcmpi(v.choice_or_accuracy,'choice')
-                        D_ac_ups(ix_p_config,ix_pct-1) = mean(sel_data.choice(case_rt));
-                    end
+                    
+                    D_ac_ups(ix_p_config,ix_pct-1) = mean(sel_data.(choice_feature)(case_rt));
                     
                     lb = prctile(t_sim,pct_ups_aug(ix_pct-1));
                     ub = prctile(t_sim,pct_ups_aug(ix_pct));
@@ -885,11 +884,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     %                     obj.data.rt(
                 end
                 
-                if strcmpi(v.choice_or_accuracy,'accuracy')
-                    D_ac_avg(ix_p_config) = mean(sel_data.correct);
-                elseif strcmpi(v.choice_or_accuracy,'choice')
-                    D_ac_avg(ix_p_config) = mean(sel_data.choice);
-                end
+                
+                D_ac_avg(ix_p_config) = mean(sel_data.(choice_feature));
+                
                 S_ac_avg(ix_p_config) = mean(c_sim);
                 
                 D_rtavg_ups(ix_p_config) = mean(t_ups);
