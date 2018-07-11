@@ -16,11 +16,14 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             get_data@ddm_def(obj);
             %add history for this subject
             obj.data.stim_conflict_hist = [false;obj.data.stim_conflict(1:end-1)];
+            obj.data.error_hist = [true;obj.data.choice(1:end-1)];
+
         end
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
             p_mat = ddm_cost_add_stim_dependencies@ddm_def_conflict(obj,p_mat);
             p_mat.c_hist = obj.data.stim_conflict_hist;
+            p_mat.e_hist = obj.data.error_hist;
         end
         
     end
@@ -60,8 +63,25 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             pubound_.(p_) = 6;
             prior_.(p_) = @(x) pdf(pd_hn,x);
             end
-
             
+            %repeat to not risk re-ordering...
+            p_list_sd.bche = 1;
+            p_list_sd.zche = 0.2;
+            p_list_sd.ache = 0.2;
+            p_list_sd.vche = 0.5;
+            
+            fn = fieldnames(p_list_sd);
+            for ix_fn = 1:length(fn)
+            p_ = fn{ix_fn};
+            modelkey_var{ix} = p_;ix = ix+1;
+            g_sd = p_list_sd.(p_);
+            pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
+            pran_.(p_) = pd_hn.random;
+            pdef_.(p_) = 0.0;
+            plbound_.(p_) = -6;
+            pubound_.(p_) = 6;
+            prior_.(p_) = @(x) pdf(pd_hn,x);
+            end
         end
     end
     
@@ -69,7 +89,7 @@ classdef ddm_def_conflict_h < ddm_def_conflict
         
         
         function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_bru(p,lt,N_its)
-            a = p.a + (p.c_hist*p.ach + (1-p.c_hist)*p.achn + 2*(p.c_hist-0.5)*p.achd);
+            a = p.a + (p.c_hist*p.ach + (1-p.c_hist)*p.achn + 2*(p.c_hist-0.5)*p.achd + 2*(p.e_hist-0.5)*p.ache);
             
             rt = (lt(1:end-1)+lt(2:end))*0.5;
             
@@ -79,7 +99,7 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             if (length(lt)-1)~=maxIterations,error('Messed up time code');end
             %%
             %modification for conflict
-            z = p.z - 0.5*(2*p.c-1)*(p.zc+p.c_hist*p.zch + (1-p.c_hist)*p.zchn + 2*(p.c_hist-0.5)*p.zchd);
+            z = p.z - 0.5*(2*p.c-1)*(p.zc+p.c_hist*p.zch + (1-p.c_hist)*p.zchn + 2*(p.c_hist-0.5)*p.zchd +  + 2*(p.e_hist-0.5)*p.zche);
             x0 = z*a;
             x0_trial = (rand(N_its,1)-0.5)*(p.sz) + x0;%n.b. this one is uniform.
             x_noise = randn(N_its,maxIterations)*(p.s)*sqrt(dt);
@@ -134,7 +154,7 @@ classdef ddm_def_conflict_h < ddm_def_conflict
         
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups] = ddm_pdf_trm(p,lt,dx)
             %
-            a = p.a + (p.c_hist*p.ach + (1-p.c_hist)*p.achn + 2*(p.c_hist-0.5)*p.achd);
+            a = p.a + (p.c_hist*p.ach + (1-p.c_hist)*p.achn + 2*(p.c_hist-0.5)*p.achd +  + 2*(p.e_hist-0.5)*p.ache);
             
             dt = lt(2)-lt(1);
             f = 5;%f = obj.s.x_bound_scale;%not sure what the consequence of shrinking this is
@@ -146,7 +166,7 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             xvm_prev = repmat(xz',length(xz),1);
             
             %modification for conflict h
-            z = p.z - 0.5*(2*p.c-1)*(p.zc+p.c_hist*p.zch + (1-p.c_hist)*p.zchn + 2*(p.c_hist-0.5)*p.zchd);
+            z = p.z - 0.5*(2*p.c-1)*(p.zc+p.c_hist*p.zch + (1-p.c_hist)*p.zchn + 2*(p.c_hist-0.5)*p.zchd + 2*(p.e_hist-0.5)*p.zche);
             za = (z)*a;
             
             [~,zeroStateIx] = min(abs(xz-za));
@@ -190,8 +210,8 @@ classdef ddm_def_conflict_h < ddm_def_conflict
                 pMat(:,1) = zn;
                 for ix_t = 2:N_t
                     %modification for conflict here.
-                    xvm_expect = xvm_prev + (v + p.c_hist*p.vch + (1-p.c_hist)*p.vchn + 2*(p.c_hist-0.5)*p.vchd)*(...
-                        1+p.c*(p.b + p.c_hist*p.bch + (1-p.c_hist)*p.bchn + 2*(p.c_hist-0.5)*p.bchd)*lt(ix_t-1)...
+                    xvm_expect = xvm_prev + (v + p.c_hist*p.vch + (1-p.c_hist)*p.vchn + 2*(p.c_hist-0.5)*p.vchd + 2*(p.e_hist-0.5)*p.vche)*(...
+                        1+p.c*(p.b + p.c_hist*p.bch + (1-p.c_hist)*p.bchn + 2*(p.c_hist-0.5)*p.bchd)*lt(ix_t-1) + 2*(p.e_hist-0.5)*p.bche)*lt(ix_t-1)...
                         )*dt;
                     
                     A = (1/sqrt(2*pi*(sig^2)))*exp(-((xvm_probe - xvm_expect).^2)/(2*(sig^2)));
