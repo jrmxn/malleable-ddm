@@ -17,7 +17,7 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             %add history for this subject
             obj.data.stim_conflict_hist = [false;obj.data.stim_conflict(1:end-1)];
             obj.data.error_hist = [true;obj.data.choice(1:end-1)];
-
+            
         end
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
@@ -53,16 +53,17 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             
             fn = fieldnames(p_list_sd);
             for ix_fn = 1:length(fn)
-            p_ = fn{ix_fn};
-            modelkey_var{ix} = p_;ix = ix+1;
-            g_sd = p_list_sd.(p_);
-            pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
-            pran_.(p_) = pd_hn.random;
-            pdef_.(p_) = 0.0;
-            plbound_.(p_) = -6;
-            pubound_.(p_) = 6;
-            prior_.(p_) = @(x) pdf(pd_hn,x);
+                p_ = fn{ix_fn};
+                modelkey_var{ix} = p_;ix = ix+1;
+                g_sd = p_list_sd.(p_);
+                pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
+                pran_.(p_) = pd_hn.random;
+                pdef_.(p_) = 0.0;
+                plbound_.(p_) = -6;
+                pubound_.(p_) = 6;
+                prior_.(p_) = @(x) pdf(pd_hn,x);
             end
+            clear p_list_sd;
             
             %repeat to not risk re-ordering...
             p_list_sd.bche = 1;
@@ -72,16 +73,17 @@ classdef ddm_def_conflict_h < ddm_def_conflict
             
             fn = fieldnames(p_list_sd);
             for ix_fn = 1:length(fn)
-            p_ = fn{ix_fn};
-            modelkey_var{ix} = p_;ix = ix+1;
-            g_sd = p_list_sd.(p_);
-            pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
-            pran_.(p_) = pd_hn.random;
-            pdef_.(p_) = 0.0;
-            plbound_.(p_) = -6;
-            pubound_.(p_) = 6;
-            prior_.(p_) = @(x) pdf(pd_hn,x);
+                p_ = fn{ix_fn};
+                modelkey_var{ix} = p_;ix = ix+1;
+                g_sd = p_list_sd.(p_);
+                pd_hn = makedist('Normal','mu',0,'sigma',g_sd);
+                pran_.(p_) = pd_hn.random;
+                pdef_.(p_) = 0.0;
+                plbound_.(p_) = -6;
+                pubound_.(p_) = 6;
+                prior_.(p_) = @(x) pdf(pd_hn,x);
             end
+            clear p_list_sd;
         end
     end
     
