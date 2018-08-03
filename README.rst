@@ -77,7 +77,7 @@ Installation
 
 How to cite
 ===========
-
+TBD - please check back in a couple of months!
 
 Getting started
 ===============
