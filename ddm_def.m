@@ -439,6 +439,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             logprior = @(m) prior_likelihood(m, xl, h_priors);
             logPfuns = {@(m)logprior(m) @(m)loglike(m)};
             %             logPfuns{1}(minit(:,1))+logPfuns{2}(minit(:,1))
+            if isempty(which('gwmcmc')),error('Add gwmcmc to path to use this: https://github.com/grinsted/gwmcmc');end
             fprintf('Starting mcmc...\n');
             [models,logp] = gwmcmc(minit,logPfuns,opt_.mccount,'Parallel',...
                 opt_.doParallel,'BurnIn',opt_.BurnIn,'ThinChain',opt_.ThinChain);
@@ -753,7 +754,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
             %
             if isnan(ll_app),ll_app=inf;end
-            k = obj.s.fit_n+1;%number of free params + 1 for fixed noise
+            k = obj.s.fit_n;%number of free params + 1 for fixed noise
             n = sum(not(isnan(p_RT_and_accuracy)));
             %
             bic_app = log(n)*k-2*ll_app;
