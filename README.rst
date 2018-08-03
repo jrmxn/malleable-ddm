@@ -73,7 +73,7 @@ id_model and id_search are fundamentally binary strings that represent the inclu
 
 Installation
 ============
-
+Download and add to path.
 
 How to cite
 ===========
