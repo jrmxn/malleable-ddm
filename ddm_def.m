@@ -754,7 +754,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
             %
             if isnan(ll_app),ll_app=inf;end
-            k = obj.s.fit_n;%number of free params + 1 for fixed noise
+            k = obj.s.fit_n;%number of free params
             n = sum(not(isnan(p_RT_and_accuracy)));
             %
             bic_app = log(n)*k-2*ll_app;
