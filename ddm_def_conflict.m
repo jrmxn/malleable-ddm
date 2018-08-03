@@ -24,7 +24,10 @@ classdef ddm_def_conflict < ddm_def
             
             for ix_sub = 1:length(sr_full)
                 ix_row_p_mat = find(strcmpi(p_mat.subject,sr_full(ix_sub).subject));
-                case_correct = strcmpi(sr_full(ix_sub).data.correctness,'correct');
+                % was using correctness for some reason - changed to choice
+                % 18/07/06, yy/mm/dd
+                % case_correct = strcmpi(sr_full(ix_sub).data.correctness,'correct');
+                case_correct = sr_full(ix_sub).data.choice == 1;
                 case_conflict = sr_full(ix_sub).data.stim_conflict;
                 p_mat.rt(ix_row_p_mat) = nanmean(sr_full(ix_sub).data.rt(case_correct));
                 p_mat.rtcong(ix_row_p_mat) = nanmean(sr_full(ix_sub).data.rt(case_correct&not(case_conflict)));

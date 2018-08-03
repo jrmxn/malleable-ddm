@@ -439,6 +439,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             logprior = @(m) prior_likelihood(m, xl, h_priors);
             logPfuns = {@(m)logprior(m) @(m)loglike(m)};
             %             logPfuns{1}(minit(:,1))+logPfuns{2}(minit(:,1))
+            if isempty(which('gwmcmc')),error('Add gwmcmc to path to use this: https://github.com/grinsted/gwmcmc');end
             fprintf('Starting mcmc...\n');
             [models,logp] = gwmcmc(minit,logPfuns,opt_.mccount,'Parallel',...
                 opt_.doParallel,'BurnIn',opt_.BurnIn,'ThinChain',opt_.ThinChain);
@@ -749,11 +750,11 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             if all(isnan(ll_vec))
                 ll_app = Inf;
             else
-            ll_app = nansum(ll_vec);%nan are values that are not in condition
+                ll_app = nansum(ll_vec);%nan are values that are not in condition
             end
             %
             if isnan(ll_app),ll_app=inf;end
-            k = obj.s.fit_n+1;%number of free params + 1 for fixed noise
+            k = obj.s.fit_n;%number of free params + 1 for fixed noise
             n = sum(not(isnan(p_RT_and_accuracy)));
             %
             bic_app = log(n)*k-2*ll_app;
@@ -768,20 +769,22 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             d.N = 2000;
             d.pct = [10,25,50,75,90];
             d.reloaddata = false;
-            d.choice_or_accuracy = 'choice';
+            d.choice_feature = 'choice';
+            d.wrt_accuracy = false;
             %%
             v = inputParser;
             addOptional(v,'N',d.N)
             addOptional(v,'pct',d.pct)
             addOptional(v,'reloaddata',d.reloaddata)
-            addOptional(v,'choice_or_accuracy',d.choice_or_accuracy)
+            addOptional(v,'choice_feature',d.choice_feature)
+            addOptional(v,'wrt_accuracy',d.wrt_accuracy)
             parse(v,varargin{:});
             %%
             v = v.Results;d = [];clear d;
             %%
-            if not(strcmpi(v.choice_or_accuracy,'accuracy')|strcmpi(v.choice_or_accuracy,'choice'))
-                error('Wrong choice_or_accuracy term');
-            end
+            %             if not(strcmpi(v.choice_feature,'accuracy')|strcmpi(v.choice_feature,'choice'))
+            %                 error('Wrong choice_feature term');
+            %             end
             %%
             %             backwards compatability (temporary)
             if v.reloaddata
@@ -824,8 +827,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             S_rt_ups = D_rt_ups;
             D_rt_dow = nan(height(p_mat_unique),length(pct.dow));
             S_rt_dow = D_rt_dow;
-            D_ac_ups = D_rt_dow;
-            S_ac_ups = D_rt_dow;
+            D_ac_ups = D_rt_ups;
+            S_ac_ups = D_rt_ups;
+            D_ac_dow = D_rt_dow;
+            S_ac_dow = D_rt_dow;
             
             D_rtavg_ups = nan(height(p_mat_unique),1);
             D_rtavg_dow = D_rtavg_ups;
@@ -847,7 +852,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 %figure out correct/incorrect
                 t_sim = [t_ups_sim,t_dow_sim];
                 c_sim = [true(size(t_ups_sim)),false(size(t_dow_sim))];
-                if strcmpi(v.choice_or_accuracy,'accuracy')
+                if v.wrt_accuracy
                     if correct_side==-1
                         c_sim = not(c_sim);
                     elseif correct_side==0
@@ -868,28 +873,35 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 sel_data = obj.data(case_config&not(case_nan),:);
                 pct_ups_aug = [0,pct.ups,100];
                 for ix_pct = 2:length(pct_ups_aug)
-                    
+
                     lb = prctile(sel_data.rt,pct_ups_aug(ix_pct-1));
                     ub = prctile(sel_data.rt,pct_ups_aug(ix_pct));
-                    case_rt = (sel_data.rt>lb)&(sel_data.rt<ub);
-                    if strcmpi(v.choice_or_accuracy,'accuracy')
-                        D_ac_ups(ix_p_config,ix_pct-1) = mean(sel_data.correct(case_rt));
-                    elseif strcmpi(v.choice_or_accuracy,'choice')
-                        D_ac_ups(ix_p_config,ix_pct-1) = mean(sel_data.choice(case_rt));
-                    end
+                    case_rt = (sel_data.rt>lb)&(sel_data.rt<=ub);
+                    D_ac_ups(ix_p_config,ix_pct-1) = mean(sel_data.(v.choice_feature)(case_rt));
                     
                     lb = prctile(t_sim,pct_ups_aug(ix_pct-1));
                     ub = prctile(t_sim,pct_ups_aug(ix_pct));
                     case_rt = (t_sim>lb)&(t_sim<ub);
                     S_ac_ups(ix_p_config,ix_pct-1) = mean(c_sim(case_rt));
-                    %                     obj.data.rt(
+                end
+                pct_dow_aug = [0,pct.dow,100];
+                for ix_pct = 2:length(pct_dow_aug)
+
+                    lb = prctile(sel_data.rt,pct_dow_aug(ix_pct-1));
+                    ub = prctile(sel_data.rt,pct_dow_aug(ix_pct));
+                    case_rt = (sel_data.rt>lb)&(sel_data.rt<=ub);
+                    D_ac_dow(ix_p_config,ix_pct-1) = mean(sel_data.(v.choice_feature)(case_rt));
+                    
+                    lb = prctile(t_sim,pct_dow_aug(ix_pct-1));
+                    ub = prctile(t_sim,pct_dow_aug(ix_pct));
+                    case_rt = (t_sim>lb)&(t_sim<=ub);
+                    S_ac_dow(ix_p_config,ix_pct-1) = mean(c_sim(case_rt));
                 end
                 
-                if strcmpi(v.choice_or_accuracy,'accuracy')
-                    D_ac_avg(ix_p_config) = mean(sel_data.correct);
-                elseif strcmpi(v.choice_or_accuracy,'choice')
-                    D_ac_avg(ix_p_config) = mean(sel_data.choice);
-                end
+                
+                
+                D_ac_avg(ix_p_config) = mean(sel_data.(v.choice_feature));
+                
                 S_ac_avg(ix_p_config) = mean(c_sim);
                 
                 D_rtavg_ups(ix_p_config) = mean(t_ups);
@@ -917,6 +929,11 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 p_mat_unique.(col_name) = D_rt_dow(:,ix_pct);
                 col_name = sprintf('rt_p%02d_dow_sim',pct.dow(ix_pct));
                 p_mat_unique.(col_name) = S_rt_dow(:,ix_pct);
+                
+                col_name = sprintf('ac_p%02d_dow_dat',pct.dow(ix_pct));
+                p_mat_unique.(col_name) = D_ac_dow(:,ix_pct);
+                col_name = sprintf('ac_p%02d_dow_sim',pct.dow(ix_pct));
+                p_mat_unique.(col_name) = S_ac_dow(:,ix_pct);
             end
             p_mat_unique.rtavg_ups_dat = D_rtavg_ups;
             p_mat_unique.rtavg_dow_dat = D_rtavg_dow;
