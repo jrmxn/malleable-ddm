@@ -45,6 +45,7 @@ Weaknesses
 ========
 It's not hierarchical.
 Straying from the DDM means you lose the advantage of analytical solutions - i.e. things get slow(er)!
+For reasonable computational speed, the transition matrix approach is not quite as accurate as the analytical solutions of NF/HDDM - although considerably better than using brute force simulation. The main deviation of the transition matrix approach to the analytical solution comes from setting the time step too low (see todo, for potential fix).
 
 Features
 ========
@@ -82,5 +83,5 @@ Getting started
 
 Todo
 ====
-- While the transition matrix approach and brute force simulation methods are in very good agreement, there appears to be a small inconsistency with the the NF/HDDM method. Possibly just due to certain assumptions made in the NF/HDDM but have not pinned this down - not important as long as NF/HDDM only used for initilisation, but needs to be looked into.
 - MCMC could be implemented analytically
+- Transition matrix approach (like brute force approach, most commonly used for DDM extensions where there is no analytical solution), suffers if the discretisation is too relaxed. In particular, the peak of the RT distribution is not fully captured if the timestep (dt) is too low. This could be improved substantially, by having dt increment more finely near the peak of the distribution.
