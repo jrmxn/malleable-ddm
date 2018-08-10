@@ -82,5 +82,5 @@ Getting started
 
 Todo
 ====
-- While the transition matrix approach and brute force simulation methods are in good agreement, there appears to be a small inconsistency with the the NF/HDDM method. Possibly just due to certain assumptions made in the NF/HDDM but have not pinned this down.
+- While the transition matrix approach and brute force simulation methods are in very good agreement, there appears to be a small inconsistency with the the NF/HDDM method. Possibly just due to certain assumptions made in the NF/HDDM but have not pinned this down.
 - MCMC could be implemented analytically
