@@ -1,6 +1,9 @@
-classdef ddm_def < matlab.mixin.Copyable%instead of handle
-    %DDM_DEF Summary of this class goes here
-    %   Detailed explanation goes here
+classdef ddm_def < matlab.mixin.Copyable
+    %DDM_DEF base fitting function from which specific model instantiations
+    %inherit.
+    %   This function should require relatively little modification, as the
+    %   idea is that specific model instances (ddm_def_base, and
+    %   ddm_def_conflict are provided as examples) inherit from this class.
     
     properties
         subject = '';
@@ -28,23 +31,19 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function obj = ddm_def
             %light initialisation so functions can be used easily
             obj.modelclass = '';%used to set file names
-            obj.info.version = sprintf('0.0.8');
+            obj.info.version = sprintf('0.0.4');
             obj.info.date = datetime;
             obj.info.description = '';
             try
-                %oly writes lowest in the hierarchy, but it's a start
+                %only writes lowest in the hierarchy, but it's a start
                 [ST, I] = dbstack('-completenames', 1);
                 obj.info.code = fileread(ST(I).file);
             catch
                 warning('Failed to archive code.');
             end
         end
-        %         function set.subject(obj,sub)
-        % for some reason, set methods don't play nice with minimisation
-        % (patternsearch)
-        %             fprintf('Setting subject name to %s\n',sub);
-        %             obj.subject = sub;
-        %         end
+
+        
         function ddm_writecode(obj,filename)
             fid = fopen(filename,'wt');
             fprintf(fid, '%s',obj.info.code);
@@ -64,6 +63,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function g = ddm_print_model(obj,quiet)
+            %display the binary representation of the current model
             if nargin==1,quiet = false;end
             if isempty(obj.modelKey)
                 fprintf('Model key not set. Setting it...\n');
@@ -77,6 +77,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         
         function ddm_delete_saved(obj,flag)
+            %delete the saved file associated with this model
             if not(exist('flag','var')==1)
                 flag = '';
             end
@@ -101,6 +102,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function [p_mat,sr_full] = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin)
+            % Convenience function to gather all files of this model type,
+            % saved in the same folder as this model. (e.g. to collect all
+            % subject fits into a single matrix).
+            % Currently does not deal well with missing subjects/sessions
             if not(exist('minorfin','var')==1),minorfin = 'fin';end
             if not(isnumeric(id_model_de)&isnumeric(id_search_de))
                 error('You put non numeric inputs into aux_gather - expects decimal model specification.');
@@ -195,9 +200,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             obj.s.minAlgo = 'nll';
             obj.s.reinit = false;
             obj.s.dt = 1e-3;
-            %             obj.s.ddx = 100;%no longer used
-            obj.s.dx = 0.01;%0.01 about = ddx = 100
-            %             obj.s.x_bound_scale = 6;
+            %
+            obj.s.dx = 0.01;
             
             obj.s.T = 5;%this could be set dynamically based on closed form
             obj.s.nits = 50e3;
@@ -232,6 +236,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function ddm_fit_init(obj,fit_ix_)
+            % Initialise the parameters prior to fitting 
+            % i.e. get a default value, a random value or set to 0, depdent
+            % on whether a specific parameter is in the model name, model
+            % search, or omitted.
             %if you want to run this manually you run it like this:
             %             sr.ddm_fit_init(sr.fit_ix + 1)
             % which then initialises it, but doesn't actually increase sr.fit_ix which
@@ -308,6 +316,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function ddm_fit(obj)
+            %Actually run the parameter search. Uses pattern search
+            %current, which works well. Could be extended to other methods
+            %simply by adding more options for opt.computeAlgo
             fit_ix_ = obj.fit_ix + 1;
             
             if length(obj.fit)<fit_ix_
@@ -377,6 +388,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function ddm_mcmc(obj,varargin)
+            % An implementation of MCMC for single fits. Not tested! Use
+            % with caution. Also note that it uses gwmcmc (an external MCMC
+            % library that has to be added to path).
             d.mccount = 25e3;
             d.ThinChain = 5;
             d.doParallel = true;
@@ -439,7 +453,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             logprior = @(m) prior_likelihood(m, xl, h_priors);
             logPfuns = {@(m)logprior(m) @(m)loglike(m)};
             %             logPfuns{1}(minit(:,1))+logPfuns{2}(minit(:,1))
-            if isempty(which('gwmcmc')),error('Add gwmcmc to path to use this: https://github.com/grinsted/gwmcmc');end
+            if isempty(which('gwmcmc')),error(['Add gwmcmc to path to use',...
+                    'this: https://github.com/grinsted/gwmcmc \n Use with',...
+                    'caution though, the MCMC implementation is untested.']);
+            end
             fprintf('Starting mcmc...\n');
             [models,logp] = gwmcmc(minit,logPfuns,opt_.mccount,'Parallel',...
                 opt_.doParallel,'BurnIn',opt_.BurnIn,'ThinChain',opt_.ThinChain);
@@ -450,6 +467,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function get_data(obj)
+            %basic data loader
+            % obj.path_data has to be set explicitly, or in inheriting
+            % function e.g. obj.path_data = fullfile('testing.csv');
             if not(isempty(obj.subject))
                 data_ = readtable(obj.path_data);
                 if isnumeric(data_.subject)
@@ -458,15 +478,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     data_.subject = arrayfun(@(x) sprintf('sub%02d',x),data_.subject,'UniformOutput',false);
                 end
                 case_subject = strcmpi(data_.subject,obj.subject);
-                
-                %                 if iscell(data_.choice)
-                %                     error('Maybe you have a string in choice field?');
-                %                 end
                 data_ = data_(case_subject,:);
-                if not(height(data_)>0),error('Bad subject spec?');end
-                
-                
-                
+                if not(height(data_)>0),error('Bad subject spec?');end    
                 obj.data = data_;
             else
                 error('No subject specified');
@@ -475,6 +488,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         
         function f_savepath = ddm_get_save_path(obj, f_path)
+            %return full path to the file we are saving to
             if not(exist('f_path','var')==1),f_path = fullfile('sim',obj.modelclass);end
             if isempty(f_path),f_path = fullfile('sim',obj.modelclass);end
             f_name = sprintf('%s_%s_%s_%s%s.mat',...
@@ -494,6 +508,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function [f_savepath,obj_] = ddm_save_properties(obj, f_path)
+            % save the files without the OOP components
             if not(exist('f_path','var')==1),f_path = '';end
             f_savepath = ddm_get_save_path(obj, f_path);
             f_savepath = strrep(f_savepath,'.mat','_properties.mat');
@@ -509,6 +524,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function [t_ups,t_dow,p_ups,p_dow,correct_side] = ddm_data_draw(obj,p,N)
+            %once we have fitted a model, draw from that model
             if contains(func2str(obj.ddm_pdf),'ddm_prt_ana')
                 error(['Need a full pdf generator from which to draw.', ...
                     'Change the pdf function handle.',...
@@ -523,6 +539,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         
         function outputArg = ddm_get_instance(obj, deftype)
+            % helper function dealing with model specification
             [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ...
                 obj.ddm_def_instance;
             
@@ -552,12 +569,14 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
-            %             p_mat.c = obj.data.stim_conflict;
+            % Important function to add experimental conditions into the 
+            % model fitting procedure (see ddm_def_conflict for use)
             p_mat.skip = zeros(height(p_mat),1);
         end
         
         function h_f = aux_plot(obj,varargin)
             % Plot function for pdf/data - a lot like cost function
+            % Use with care.
             % At the moment this function would deal terribly
             % with individual trial modulation data - (each trial would
             % spawn a subplot).
@@ -690,16 +709,35 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function [nll_app,aic_app,aicc_app,bic_app,ll_vec] = ddm_cost_pdf_nll(obj,x,p)
+            % Generate the NLL, AIC etc. Acts as the cost function for the
+            % optimisation.
+            % Works by finding all unique trial conditions, performing the
+            % model simulation, then evaluating the simulations against the
+            % data.
+            % N.B. The function is current written in terms of right/wrong,
+            % but this is generally equivalent to a binary choice (although
+            % it would be clearer if it was directly specified as a binary
+            % choice).
+            
+            
             if not(isempty(x))
                 p = obj.px2p(obj.s.xl,p,x);
             end
             p_RT_and_accuracy = nan(height(obj.data),1);
             
+            % Initially assume we need to compute a model for each trial
+            % so repeat p (a structure containing all model parameters) to
+            % be as many rows as we have trials
             p_mat = struct2table(repmat(p,height(obj.data),1));
             
             %Add trial-trial stimulus dependencies (e.g. coherence, conflict etc.)
+            % E.g. if 50% of our trials are conflict, and this is important
+            % p_mat is now augmented with this information (after correct
+            % sepcification of ddm_cost_add_stim_dependencies)
             p_mat = obj.ddm_cost_add_stim_dependencies(p_mat);
             
+            %and now find all the unique models that we actually need to
+            %evaluate
             p_mat_unique = unique(p_mat);
             p_mat_unique(p_mat_unique.skip>0,:) = [];
             
@@ -728,7 +766,6 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     pRT_g_cr_x_p_cr = pRT_g_cr*p_cr;
                     pRT_g_cw_x_p_cw = pRT_g_cw*(1-p_cr);
                     
-                    
                 else
                     ix_cr = round(t_cr/obj.s.dt);
                     ix_cw = round(t_cw/obj.s.dt);
@@ -743,14 +780,20 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 p_RT_and_accuracy(case_right&case_config&not(case_nan)) = pRT_g_cr_x_p_cr;
                 p_RT_and_accuracy(case_wrong&case_config&not(case_nan)) = pRT_g_cw_x_p_cw;
             end
-            p_RT_and_accuracy(p_RT_and_accuracy == 0) = 1e-32;%not great
+            
+            % To avoid Inf set impossible outcomes to be very improbable.
+            % This is so that when our optimisation starts far away from
+            % the truth, the fitting procedure does not just immediately
+            % fail.
+            p_RT_and_accuracy(p_RT_and_accuracy == 0) = 1e-32;
             
             
             ll_vec = log(p_RT_and_accuracy);
             if all(isnan(ll_vec))
                 ll_app = Inf;
             else
-                ll_app = nansum(ll_vec);%nan are values that are not in condition
+                %nan are values that are not in condition
+                ll_app = nansum(ll_vec);
             end
             %
             if isnan(ll_app),ll_app=inf;end
@@ -764,7 +807,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function  [p_mat_unique,pct] = ddm_get_prctile( obj, varargin)
-            warning('Need to go through this function carefully...');
+            % Functions for display purposes - currently not very clean!
             %this method generates the expected DV trace for a given trial
             d.N = 2000;
             d.pct = [10,25,50,75,90];
@@ -1050,6 +1093,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
     
     methods (Access = protected)
         function [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ddm_def_instance(obj)
+            % Model specification. To be overwritten by inherited
+            % functions. See ddm_def_conflict for an example.
             ix = 1;
             
             p_ = 's';
@@ -1139,7 +1184,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         function  [pdf_,p_cr] = ddm_prt_ana(p,rt)
             err = 1e-8;
-            %it's a surprise to me that other terms don't matter here...
+            % use functions from HDDM
             p_cr = ddm_def.hddm_prob_ub(p.v,p.a,p.z);
             h_pdf = @(x) ddm_def.hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
             pdf_ = arrayfun(@(x) h_pdf(x),+rt);
@@ -1197,6 +1242,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
         end
         function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side,vec_rt,vec_correct,td_tot,x] = ddm_pdf_bru(p,lt,N_its)
+            % brute force method of generating likelihood
             correct_side = 1;
             dt = lt(2)-lt(1);
             T = lt(end)+dt;
@@ -1253,6 +1299,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ddm_pdf_trm(p,lt,dx)
+            % transition matrix based method of generating likelihood
             correct_side = 1;
             %
             dt = lt(2)-lt(1);
@@ -1338,6 +1385,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function [t_ups,t_dow,p_ups,p_dow] = ddm_pdf2rt(cdf_ups,cdf_dow,t_math,N,varargin)
+            % Second part of ddm_data_draw which converts uniform draws to
+            % draws from our distribution.
             d.balanced = true;
             %%
             v = inputParser;
@@ -1392,7 +1441,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function op = debi_model(ip, ip_type, op_req)
-            
+            % function to convert between model names in different formats
+            % (binary, decimal, string)
             max_n_param = 39;
             
             if strcmpi(ip_type,'de')
@@ -1473,7 +1523,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         
         function op = hddm_pdf(x,v,a,w,err)
-            %Translated from HDDM core
+            %Translated from HDDM core - this is so that fast fitting can
+            %be done when we don't need to use extended models. Or when we
+            %want to find some good initisalisation parameters for extended
+            %models.
             %"""Compute the likelihood of the drift diffusion model f(t|v,a,z) using the method
             %and implementation of Navarro & Fuss, 2009.
             %"""

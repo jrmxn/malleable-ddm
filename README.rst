@@ -4,17 +4,12 @@ Introduction
 
 :Author: James R. McIntosh
 :Contact: j.mcintosh@columbia.edu
-:Web site:
-:Github:
-:Mailing list:
-:Copyright:
-:License:
 :Version: 0.0.4
 
 Purpose
 =======
 
-To allow rapid prototyping of DDM extensions.
+To allow rapid prototyping of DDM extensions, for example for conflict tasks.
 Code is a synthesis of tricks that I have been using to run drift-diffusion based models for a few years, as well as some taken from the HDDM toolbox.
 
 Features
@@ -27,7 +22,7 @@ Features
 	- Write your likelihood function making use of model parameters and model inputs (examples provided)
 - Because this is all specified directly, the model structure is very clear
 - Model is specified as two binary numbers representing each model parameter. One number represents all the set parameters for this evaluation, the other number represents all the parameters over which to optimise.
-e.g. if our full model is s,a,t,v,st then we could define the following submodel: model_id = [1,1,1,1,0], model_search = [0,1,1,1,0], which would initialise a search by setting st to 0 (unused), s to its default value (1) and randomly initialise and then optimise a, t and v.
+For example, if our full model is s,a,t,v,st then we could define the following submodel: model_id = [1,1,1,1,0], model_search = [0,1,1,1,0], which would initialise a search by setting st to 0 (unused), s to its default value (1) and randomly initialise and then optimise a, t and v.
 	- This means it's easy to setup complex models and systematically search submodels, or freeze certain parts of the model while allowing some parameters to be free.
 	- Simple to start optimisation of complex models based on simpler models
 	- Easy to keep track of many candidate moels
