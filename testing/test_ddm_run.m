@@ -56,12 +56,14 @@ for ix_fit_type = [1:3]
         elseif ix_fit_type==2
             %the transition matrix method
             sr.modelclass = 'base_trm';%just a name for the folder
-            sr.s.dx = 0.025;%speed things up a bit (not as accurate)
+            %use relaxed values to get in ballpark of solution:
+            sr.s.dx = 0.025;%speed things up a bit  (not as accurate, for final optimisation would say <0.005)
+            sr.s.dt = 1e-3;%speed things up a bit (not as accurate, for final optimisation would say <5e-4)
             sr.ddm_pdf = @(a,b) sr.ddm_pdf_trm(a,b,sr.s.dx);
         elseif ix_fit_type==3
             %brute force method
             sr.modelclass = 'base_bru';%just a name for the folder
-            sr.s.nits = 10e3;
+            sr.s.nits = 10e3;%(only 10e3 - not very accurate)
             sr.ddm_pdf = @(a,b) sr.ddm_pdf_bru(a,b,sr.s.nits);
         elseif ix_fit_type == 4
             % buggy - needs fixing
