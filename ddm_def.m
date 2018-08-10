@@ -42,7 +42,7 @@ classdef ddm_def < matlab.mixin.Copyable
                 warning('Failed to archive code.');
             end
         end
-
+        
         
         function ddm_writecode(obj,filename)
             fid = fopen(filename,'wt');
@@ -236,7 +236,7 @@ classdef ddm_def < matlab.mixin.Copyable
         end
         
         function ddm_fit_init(obj,fit_ix_)
-            % Initialise the parameters prior to fitting 
+            % Initialise the parameters prior to fitting
             % i.e. get a default value, a random value or set to 0, depdent
             % on whether a specific parameter is in the model name, model
             % search, or omitted.
@@ -479,7 +479,7 @@ classdef ddm_def < matlab.mixin.Copyable
                 end
                 case_subject = strcmpi(data_.subject,obj.subject);
                 data_ = data_(case_subject,:);
-                if not(height(data_)>0),error('Bad subject spec?');end    
+                if not(height(data_)>0),error('Bad subject spec?');end
                 obj.data = data_;
             else
                 error('No subject specified');
@@ -569,7 +569,7 @@ classdef ddm_def < matlab.mixin.Copyable
         
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
-            % Important function to add experimental conditions into the 
+            % Important function to add experimental conditions into the
             % model fitting procedure (see ddm_def_conflict for use)
             p_mat.skip = zeros(height(p_mat),1);
         end
@@ -916,7 +916,7 @@ classdef ddm_def < matlab.mixin.Copyable
                 sel_data = obj.data(case_config&not(case_nan),:);
                 pct_ups_aug = [0,pct.ups,100];
                 for ix_pct = 2:length(pct_ups_aug)
-
+                    
                     lb = prctile(sel_data.rt,pct_ups_aug(ix_pct-1));
                     ub = prctile(sel_data.rt,pct_ups_aug(ix_pct));
                     case_rt = (sel_data.rt>lb)&(sel_data.rt<=ub);
@@ -929,7 +929,7 @@ classdef ddm_def < matlab.mixin.Copyable
                 end
                 pct_dow_aug = [0,pct.dow,100];
                 for ix_pct = 2:length(pct_dow_aug)
-
+                    
                     lb = prctile(sel_data.rt,pct_dow_aug(ix_pct-1));
                     ub = prctile(sel_data.rt,pct_dow_aug(ix_pct));
                     case_rt = (sel_data.rt>lb)&(sel_data.rt<=ub);
@@ -1284,8 +1284,16 @@ classdef ddm_def < matlab.mixin.Copyable
             
             vec_correct = vec_correct==1;
             
-            cdf_ups = ksdensity(vec_rt(vec_correct),lt,'Support','Positive','function','cdf');
-            cdf_dow = ksdensity(vec_rt(not(vec_correct)),lt,'Support','Positive','function','cdf');
+            if sum(vec_correct)==0
+                cdf_ups = zeros(size(lt));
+            else
+                cdf_ups = ksdensity(vec_rt(vec_correct),lt,'Support','Positive','function','cdf');
+            end
+            if sum(not(vec_correct))==0
+                cdf_dow = zeros(size(lt));
+            else
+                cdf_dow = ksdensity(vec_rt(not(vec_correct)),lt,'Support','Positive','function','cdf');
+            end
             p_ups = sum(vec_correct)/length(vec_correct);
             p_dow = 1-p_ups;
             %this is already handled at the moment.
