@@ -1,3 +1,4 @@
+%% Examine the likelihood (for each data point) computed with different methods
 clear;
 addpath('..');
 f_path_data = 'testing.csv';
