@@ -79,7 +79,13 @@ TBD
 
 Getting started
 ===============
+The following functions in the testing folder can be run directly, and should clarify usage:
+test_compare_likelihoods.m - Plots the likelihood of data after model fitting with the analytical method, and compared it to likelhood of other methods. Deviation is due to discretization of decision variable and time for transition matrix method, and time for brute force method.
+test_compare_pdf.m - Similar to above, but shows the PDF.
+test_ddm_run.m - fit the basic DDM with the various methods.
+test_ddm_run_conflict.m - fit a conflict DDM by initializing with the analytical methods, and then running the transition matrix approach to capture conflict.
 
+To generate your own model with new parameters test_ddm_run_conflict.m is a good start - shows how to include trial conditions (presence of conflict in this case, but could be stimulus strength etc.). Includes the formulation for the transition matrix method, and shows how to add non-standard DDM parameters.
 
 Todo
 ====
