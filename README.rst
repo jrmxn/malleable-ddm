@@ -30,7 +30,7 @@ For example, if our full model is s,a,t,v,st then we could define the following 
 - Written in Matlab (a feature for some!). Minimisation of cost function
 - Fits are saved as matlab objects - makes it very easy to load previous fits, extend, re-fit, and keep track of the model fitting history.
 - Three likelihood calculation methods are currently included as examples:
-	- Core functions of HDDM (Navarro and Fuss analytical solutions) for speed - when initialising models or only using simple models
+	- Core functions of HDDM (Navarro and Fuss analytical solutions) for speed - when initialising models or only using simple models (although see todo, regarding a slight inconsistency in NF/HDDM method implementation).
 	- Brute force simulation with density estimation (using matlab's ksdensity) - easy to extend, but slow and prone to local minima due to stochastic nature (although pattern search generally does a good job)
 	- Calculation decision-variable path with transition matrix iterative multiplication - easy to extend, quite fast with reasonable discretization (apart from for specific parameters, e.g. including noise in drift is a x10 slow down).
 
@@ -68,11 +68,13 @@ id_model and id_search are fundamentally binary strings that represent the inclu
 
 Installation
 ============
-Download and add to path.
+1) Download.
+2) Add the folder containing ddm_def.m to path, and subfolders: addpath(genpath(fullfile('pathtofolder','malleable-ddm'));
+3) Move the contents of the testing folder to somewhere where you will be working, and delete the empty testing folder.
 
 How to cite
 ===========
-TBD - please check back in a couple of months!
+TBD
 
 Getting started
 ===============
@@ -80,4 +82,5 @@ Getting started
 
 Todo
 ====
-- Could somehow do multiple subject MCMC to make it hierarchical... but might be a lot of work.
+- While the transition matrix approach and brute force simulation methods are in good agreement, there appears to be a small inconsistency with the the NF/HDDM method. Possibly just due to certain assumptions made in the NF/HDDM but have not pinned this down.
+- MCMC could be implemented analytically
