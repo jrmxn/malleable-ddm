@@ -1,6 +1,7 @@
 %% Examine the likelihood (for each data point) computed with different methods
 clear;
 addpath('..');
+addpath(fullfile('..','ext_mod'));
 f_path_data = 'testing.csv';
 for ix_sub = 1
     rng(ix_sub);

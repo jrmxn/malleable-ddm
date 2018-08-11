@@ -11,7 +11,7 @@ v = v.Results;
 d = [];clear d;
 %%
 addpath(fullfile('..'));
-addpath(fullfile('..','auxf'));
+addpath(fullfile('..','ext_mod'));
 path_data = fullfile('testing.csv');
 n_fits = 5;
 vec_sub = v.vec_sub;

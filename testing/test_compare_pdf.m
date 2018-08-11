@@ -1,5 +1,6 @@
 clear;
 addpath('..');
+addpath(fullfile('..','ext_mod'));
 %%
 % Compare likelihood evaluations for DDM without extensions
 % analytical solution from NF/HDDM is most accurate
