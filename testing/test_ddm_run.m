@@ -4,14 +4,15 @@
 clear;
 f_path_data = 'testing.csv';
 addpath('..');
-for ix_fit_type = [1:3]
-    for ix_sub = 1%:3
+for ix_fit_type = [1, 2, 3]
+    for ix_sub = 1:3
         
         clear sr;
         sr = ddm_def_base;
         sr.subject = sprintf('sub%02d',ix_sub);
         sr.path_data = fullfile('testing.csv');
         mk = sr.ddm_get_instance('keyr');
+        rng(ix_sub);
         %% Define the model parameters included in the model
         id_model = sr.debi_model(0,'de','bi');
         id_model(mk.s) = 1;
@@ -38,6 +39,10 @@ for ix_fit_type = [1:3]
 
         % Initialise the fit
         sr.ddm_init(id_model_de,id_search_de);
+        
+        %temporary
+        sr.opt.parallelsearch = false;
+        
         
         % Set the method used to calculate the likelihood:
         % In reality you would choose one of these methods, ddm_pdf_ana
