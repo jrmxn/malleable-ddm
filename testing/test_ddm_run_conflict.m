@@ -10,8 +10,8 @@ parse(v,varargin{:})
 v = v.Results;
 d = [];clear d;
 %%
-addpath(fullfile('..','auxf'));
 addpath(fullfile('..'));
+addpath(fullfile('..','auxf'));
 path_data = fullfile('testing.csv');
 n_fits = 5;
 vec_sub = v.vec_sub;

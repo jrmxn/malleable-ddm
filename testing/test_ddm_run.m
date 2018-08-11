@@ -4,6 +4,7 @@
 clear;
 f_path_data = 'testing.csv';
 addpath('..');
+addpath(fullfile('..','auxf'));
 for ix_fit_type = [1, 2, 3]
     for ix_sub = 1:3
         
