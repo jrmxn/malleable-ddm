@@ -1281,6 +1281,7 @@ classdef ddm_def < matlab.mixin.Copyable
             
             td_tot = p.t + (rand(N_its,1)-0.5)*p.st;
             vec_rt = vec_rt + td_tot;
+            vec_rt(vec_rt<dt) = dt;%should not happen anywhere near real solutions
             
             vec_correct = vec_correct==1;
             
