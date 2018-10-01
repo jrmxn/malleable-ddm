@@ -378,6 +378,7 @@ classdef ddm_def < matlab.mixin.Copyable
             obj.fit(fit_ix_).id_model = obj.id_model;
             obj.fit(fit_ix_).id_search = obj.id_search;
             obj.fit(fit_ix_).s = obj.s;
+            obj.fit(fit_ix_).ddm_pdf = obj.ddm_pdf;
             obj.fit(fit_ix_).modelKey = obj.modelKey;
             obj.fit(fit_ix_).opt = obj.opt;
             obj.fit(fit_ix_).info = obj.info;
