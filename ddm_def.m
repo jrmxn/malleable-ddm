@@ -31,7 +31,7 @@ classdef ddm_def < matlab.mixin.Copyable
         function obj = ddm_def
             %light initialisation so functions can be used easily
             obj.modelclass = '';%used to set file names
-            obj.info.version = sprintf('0.0.6');
+            obj.info.version = sprintf('0.0.7');
             obj.info.date = datetime;
             obj.info.description = '';
             try

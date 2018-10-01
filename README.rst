@@ -4,7 +4,7 @@ Introduction
 
 :Author: James R. McIntosh
 :Contact: j.mcintosh@columbia.edu
-:Version: 0.0.6
+:Version: 0.0.7
 
 Purpose
 =======
