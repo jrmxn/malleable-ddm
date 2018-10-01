@@ -11,6 +11,10 @@ classdef ddm_def_base < ddm_def
         end
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
+            % this function could be omitted for the basic DDM fits
+            % but adding to show how to incorporate trial conditions
+            % (conflict in this case)
+            p_mat = ddm_cost_add_stim_dependencies@ddm_def(obj,p_mat);
             p_mat.c = obj.data.stim_conflict;
         end
         

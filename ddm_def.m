@@ -1,6 +1,9 @@
-classdef ddm_def < matlab.mixin.Copyable%instead of handle
-    %DDM_DEF Summary of this class goes here
-    %   Detailed explanation goes here
+classdef ddm_def < matlab.mixin.Copyable
+    %DDM_DEF base fitting function from which specific model instantiations
+    %inherit.
+    %   This function should require relatively little modification, as the
+    %   idea is that specific model instances (ddm_def_base, and
+    %   ddm_def_conflict are provided as examples) inherit from this class.
     
     properties
         subject = '';
@@ -28,23 +31,19 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         function obj = ddm_def
             %light initialisation so functions can be used easily
             obj.modelclass = '';%used to set file names
-            obj.info.version = sprintf('0.0.8');
+            obj.info.version = sprintf('0.0.6');
             obj.info.date = datetime;
             obj.info.description = '';
             try
-                %oly writes lowest in the hierarchy, but it's a start
+                %only writes lowest in the hierarchy, but it's a start
                 [ST, I] = dbstack('-completenames', 1);
                 obj.info.code = fileread(ST(I).file);
             catch
                 warning('Failed to archive code.');
             end
         end
-        %         function set.subject(obj,sub)
-        % for some reason, set methods don't play nice with minimisation
-        % (patternsearch)
-        %             fprintf('Setting subject name to %s\n',sub);
-        %             obj.subject = sub;
-        %         end
+        
+        
         function ddm_writecode(obj,filename)
             fid = fopen(filename,'wt');
             fprintf(fid, '%s',obj.info.code);
@@ -64,6 +63,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function g = ddm_print_model(obj,quiet)
+            %display the binary representation of the current model
             if nargin==1,quiet = false;end
             if isempty(obj.modelKey)
                 fprintf('Model key not set. Setting it...\n');
@@ -77,6 +77,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         
         function ddm_delete_saved(obj,flag)
+            %delete the saved file associated with this model
             if not(exist('flag','var')==1)
                 flag = '';
             end
@@ -101,6 +102,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function [p_mat,sr_full] = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin)
+            % Convenience function to gather all files of this model type,
+            % saved in the same folder as this model. (e.g. to collect all
+            % subject fits into a single matrix).
+            % Currently does not deal well with missing subjects/sessions
             if not(exist('minorfin','var')==1),minorfin = 'fin';end
             if not(isnumeric(id_model_de)&isnumeric(id_search_de))
                 error('You put non numeric inputs into aux_gather - expects decimal model specification.');
@@ -195,9 +200,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             obj.s.minAlgo = 'nll';
             obj.s.reinit = false;
             obj.s.dt = 1e-3;
-            %             obj.s.ddx = 100;%no longer used
-            obj.s.dx = 0.01;%0.01 about = ddx = 100
-            %             obj.s.x_bound_scale = 6;
+            %
+            obj.s.dx = 0.01;
             
             obj.s.T = 5;%this could be set dynamically based on closed form
             obj.s.nits = 50e3;
@@ -232,6 +236,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function ddm_fit_init(obj,fit_ix_)
+            % Initialise the parameters prior to fitting
+            % i.e. get a default value, a random value or set to 0, depdent
+            % on whether a specific parameter is in the model name, model
+            % search, or omitted.
             %if you want to run this manually you run it like this:
             %             sr.ddm_fit_init(sr.fit_ix + 1)
             % which then initialises it, but doesn't actually increase sr.fit_ix which
@@ -308,6 +316,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function ddm_fit(obj)
+            %Actually run the parameter search. Uses pattern search
+            %current, which works well. Could be extended to other methods
+            %simply by adding more options for opt.computeAlgo
             fit_ix_ = obj.fit_ix + 1;
             
             if length(obj.fit)<fit_ix_
@@ -367,6 +378,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             obj.fit(fit_ix_).id_model = obj.id_model;
             obj.fit(fit_ix_).id_search = obj.id_search;
             obj.fit(fit_ix_).s = obj.s;
+            obj.fit(fit_ix_).ddm_pdf = obj.ddm_pdf;
             obj.fit(fit_ix_).modelKey = obj.modelKey;
             obj.fit(fit_ix_).opt = obj.opt;
             obj.fit(fit_ix_).info = obj.info;
@@ -377,6 +389,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function ddm_mcmc(obj,varargin)
+            % An implementation of MCMC for single fits. Not tested! Use
+            % with caution. Also note that it uses gwmcmc (an external MCMC
+            % library that has to be added to path).
             d.mccount = 25e3;
             d.ThinChain = 5;
             d.doParallel = true;
@@ -439,7 +454,10 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             logprior = @(m) prior_likelihood(m, xl, h_priors);
             logPfuns = {@(m)logprior(m) @(m)loglike(m)};
             %             logPfuns{1}(minit(:,1))+logPfuns{2}(minit(:,1))
-            if isempty(which('gwmcmc')),error('Add gwmcmc to path to use this: https://github.com/grinsted/gwmcmc');end
+            if isempty(which('gwmcmc')),error(['Add gwmcmc to path to use',...
+                    'this: https://github.com/grinsted/gwmcmc \n Use with',...
+                    'caution though, the MCMC implementation is untested.']);
+            end
             fprintf('Starting mcmc...\n');
             [models,logp] = gwmcmc(minit,logPfuns,opt_.mccount,'Parallel',...
                 opt_.doParallel,'BurnIn',opt_.BurnIn,'ThinChain',opt_.ThinChain);
@@ -450,6 +468,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function get_data(obj)
+            %basic data loader
+            % obj.path_data has to be set explicitly, or in inheriting
+            % function e.g. obj.path_data = fullfile('testing.csv');
             if not(isempty(obj.subject))
                 data_ = readtable(obj.path_data);
                 if isnumeric(data_.subject)
@@ -458,15 +479,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     data_.subject = arrayfun(@(x) sprintf('sub%02d',x),data_.subject,'UniformOutput',false);
                 end
                 case_subject = strcmpi(data_.subject,obj.subject);
-                
-                %                 if iscell(data_.choice)
-                %                     error('Maybe you have a string in choice field?');
-                %                 end
                 data_ = data_(case_subject,:);
                 if not(height(data_)>0),error('Bad subject spec?');end
-                
-                
-                
                 obj.data = data_;
             else
                 error('No subject specified');
@@ -475,6 +489,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         
         function f_savepath = ddm_get_save_path(obj, f_path)
+            %return full path to the file we are saving to
             if not(exist('f_path','var')==1),f_path = fullfile('sim',obj.modelclass);end
             if isempty(f_path),f_path = fullfile('sim',obj.modelclass);end
             f_name = sprintf('%s_%s_%s_%s%s.mat',...
@@ -494,6 +509,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function [f_savepath,obj_] = ddm_save_properties(obj, f_path)
+            % save the files without the OOP components
             if not(exist('f_path','var')==1),f_path = '';end
             f_savepath = ddm_get_save_path(obj, f_path);
             f_savepath = strrep(f_savepath,'.mat','_properties.mat');
@@ -509,6 +525,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function [t_ups,t_dow,p_ups,p_dow,correct_side] = ddm_data_draw(obj,p,N)
+            %once we have fitted a model, draw from that model
             if contains(func2str(obj.ddm_pdf),'ddm_prt_ana')
                 error(['Need a full pdf generator from which to draw.', ...
                     'Change the pdf function handle.',...
@@ -523,6 +540,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         
         function outputArg = ddm_get_instance(obj, deftype)
+            % helper function dealing with model specification
             [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ...
                 obj.ddm_def_instance;
             
@@ -552,12 +570,14 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         
         function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
-            %             p_mat.c = obj.data.stim_conflict;
+            % Important function to add experimental conditions into the
+            % model fitting procedure (see ddm_def_conflict for use)
             p_mat.skip = zeros(height(p_mat),1);
         end
         
         function h_f = aux_plot(obj,varargin)
             % Plot function for pdf/data - a lot like cost function
+            % Use with care.
             % At the moment this function would deal terribly
             % with individual trial modulation data - (each trial would
             % spawn a subplot).
@@ -690,16 +710,35 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function [nll_app,aic_app,aicc_app,bic_app,ll_vec] = ddm_cost_pdf_nll(obj,x,p)
+            % Generate the NLL, AIC etc. Acts as the cost function for the
+            % optimisation.
+            % Works by finding all unique trial conditions, performing the
+            % model simulation, then evaluating the simulations against the
+            % data.
+            % N.B. The function is current written in terms of right/wrong,
+            % but this is generally equivalent to a binary choice (although
+            % it would be clearer if it was directly specified as a binary
+            % choice).
+            
+            
             if not(isempty(x))
                 p = obj.px2p(obj.s.xl,p,x);
             end
             p_RT_and_accuracy = nan(height(obj.data),1);
             
+            % Initially assume we need to compute a model for each trial
+            % so repeat p (a structure containing all model parameters) to
+            % be as many rows as we have trials
             p_mat = struct2table(repmat(p,height(obj.data),1));
             
             %Add trial-trial stimulus dependencies (e.g. coherence, conflict etc.)
+            % E.g. if 50% of our trials are conflict, and this is important
+            % p_mat is now augmented with this information (after correct
+            % sepcification of ddm_cost_add_stim_dependencies)
             p_mat = obj.ddm_cost_add_stim_dependencies(p_mat);
             
+            %and now find all the unique models that we actually need to
+            %evaluate
             p_mat_unique = unique(p_mat);
             p_mat_unique(p_mat_unique.skip>0,:) = [];
             
@@ -728,7 +767,6 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                     pRT_g_cr_x_p_cr = pRT_g_cr*p_cr;
                     pRT_g_cw_x_p_cw = pRT_g_cw*(1-p_cr);
                     
-                    
                 else
                     ix_cr = round(t_cr/obj.s.dt);
                     ix_cw = round(t_cw/obj.s.dt);
@@ -743,14 +781,20 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 p_RT_and_accuracy(case_right&case_config&not(case_nan)) = pRT_g_cr_x_p_cr;
                 p_RT_and_accuracy(case_wrong&case_config&not(case_nan)) = pRT_g_cw_x_p_cw;
             end
-            p_RT_and_accuracy(p_RT_and_accuracy == 0) = 1e-32;%not great
+            
+            % To avoid Inf set impossible outcomes to be very improbable.
+            % This is so that when our optimisation starts far away from
+            % the truth, the fitting procedure does not just immediately
+            % fail.
+            p_RT_and_accuracy(p_RT_and_accuracy == 0) = 1e-32;
             
             
             ll_vec = log(p_RT_and_accuracy);
             if all(isnan(ll_vec))
                 ll_app = Inf;
             else
-                ll_app = nansum(ll_vec);%nan are values that are not in condition
+                %nan are values that are not in condition
+                ll_app = nansum(ll_vec);
             end
             %
             if isnan(ll_app),ll_app=inf;end
@@ -764,7 +808,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function  [p_mat_unique,pct] = ddm_get_prctile( obj, varargin)
-            warning('Need to go through this function carefully...');
+            % Functions for display purposes - currently not very clean!
             %this method generates the expected DV trace for a given trial
             d.N = 2000;
             d.pct = [10,25,50,75,90];
@@ -873,7 +917,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 sel_data = obj.data(case_config&not(case_nan),:);
                 pct_ups_aug = [0,pct.ups,100];
                 for ix_pct = 2:length(pct_ups_aug)
-
+                    
                     lb = prctile(sel_data.rt,pct_ups_aug(ix_pct-1));
                     ub = prctile(sel_data.rt,pct_ups_aug(ix_pct));
                     case_rt = (sel_data.rt>lb)&(sel_data.rt<=ub);
@@ -886,7 +930,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
                 end
                 pct_dow_aug = [0,pct.dow,100];
                 for ix_pct = 2:length(pct_dow_aug)
-
+                    
                     lb = prctile(sel_data.rt,pct_dow_aug(ix_pct-1));
                     ub = prctile(sel_data.rt,pct_dow_aug(ix_pct));
                     case_rt = (sel_data.rt>lb)&(sel_data.rt<=ub);
@@ -1050,6 +1094,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
     
     methods (Access = protected)
         function [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ddm_def_instance(obj)
+            % Model specification. To be overwritten by inherited
+            % functions. See ddm_def_conflict for an example.
             ix = 1;
             
             p_ = 's';
@@ -1139,9 +1185,9 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         
         function  [pdf_,p_cr] = ddm_prt_ana(p,rt)
             err = 1e-8;
-            %it's a surprise to me that other terms don't matter here...
-            p_cr = ddm_def.hddm_prob_ub(p.v,p.a,p.z);
-            h_pdf = @(x) ddm_def.hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
+            % use functions from HDDM
+            p_cr = hddm_prob_ub(p.v,p.a,p.z);
+            h_pdf = @(x) hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
             pdf_ = arrayfun(@(x) h_pdf(x),+rt);
             
         end
@@ -1155,14 +1201,14 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             correct_side = 1;%assume upper bound is correct
             err = 1e-8;
             
-            h_pdf = @(x) ddm_def.hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
+            h_pdf = @(x) hddm_pdf_full(x,p.v,p.sv,p.a,p.z,p.sz,p.t,p.st,err);
             pdf_ups = arrayfun(@(x) h_pdf(x),+rt);
             pdf_dow = arrayfun(@(x) h_pdf(x),-rt);
             
             
             cdf_ups = cumtrapz(rt, pdf_ups);
             cdf_dow = cumtrapz(rt, pdf_dow);
-            p_ups = ddm_def.hddm_prob_ub(p.v,p.a,p.z);
+            p_ups = hddm_prob_ub(p.v,p.a,p.z);
             %           Rescale the cdf to avoid numerical issues with the integration
             %           assumes that max(rt) really has made the tail to go zero.
             cdf_ups = (cdf_ups/cdf_ups(end))*p_ups;
@@ -1197,6 +1243,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             end
         end
         function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side,vec_rt,vec_correct,td_tot,x] = ddm_pdf_bru(p,lt,N_its)
+            % brute force method of generating likelihood
             correct_side = 1;
             dt = lt(2)-lt(1);
             T = lt(end)+dt;
@@ -1235,11 +1282,20 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
             
             td_tot = p.t + (rand(N_its,1)-0.5)*p.st;
             vec_rt = vec_rt + td_tot;
+            vec_rt(vec_rt<dt) = dt;%should not happen anywhere near real solutions
             
             vec_correct = vec_correct==1;
             
-            cdf_ups = ksdensity(vec_rt(vec_correct),lt,'Support','Positive','function','cdf');
-            cdf_dow = ksdensity(vec_rt(not(vec_correct)),lt,'Support','Positive','function','cdf');
+            if sum(vec_correct)==0
+                cdf_ups = zeros(size(lt));
+            else
+                cdf_ups = ksdensity(vec_rt(vec_correct),lt,'Support','Positive','function','cdf');
+            end
+            if sum(not(vec_correct))==0
+                cdf_dow = zeros(size(lt));
+            else
+                cdf_dow = ksdensity(vec_rt(not(vec_correct)),lt,'Support','Positive','function','cdf');
+            end
             p_ups = sum(vec_correct)/length(vec_correct);
             p_dow = 1-p_ups;
             %this is already handled at the moment.
@@ -1253,6 +1309,7 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ddm_pdf_trm(p,lt,dx)
+            % transition matrix based method of generating likelihood
             correct_side = 1;
             %
             dt = lt(2)-lt(1);
@@ -1338,6 +1395,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function [t_ups,t_dow,p_ups,p_dow] = ddm_pdf2rt(cdf_ups,cdf_dow,t_math,N,varargin)
+            % Second part of ddm_data_draw which converts uniform draws to
+            % draws from our distribution.
             d.balanced = true;
             %%
             v = inputParser;
@@ -1392,7 +1451,8 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         function op = debi_model(ip, ip_type, op_req)
-            
+            % function to convert between model names in different formats
+            % (binary, decimal, string)
             max_n_param = 39;
             
             if strcmpi(ip_type,'de')
@@ -1425,209 +1485,22 @@ classdef ddm_def < matlab.mixin.Copyable%instead of handle
         end
         
         %
-        function p = ftt_01w(tt,w,err)
-            %Translated from HDDM core/N.F paper
-            if (pi*tt*err)<1 % if error threshold is set low enough
-                kl=sqrt(-2*log(pi*tt*err)/(pi^2*tt)); % bound
-                kl=max(kl,1/(pi*sqrt(tt))); % ensure boundary conditions met
-            else % if error threshold set too high
-                kl=1/(pi*sqrt(tt)); % set to boundary condition
-            end
-            % calculate number of terms needed for small t
-            if (2*sqrt(2*pi*tt)*err)<1 % if error threshold is set low enough
-                ks=2+sqrt(-2*tt.*log(2*sqrt(2*pi*tt)*err)); % bound
-                ks=max(ks,sqrt(tt)+1); % ensure boundary conditions are met
-            else % if error threshold was set too high
-                ks=2; % minimal kappa for that case
-            end
-            
-            % compute f(tt|0,1,w)
-            p=0; %initialize density
-            if ks<kl % if small t is better (i.e., lambda<0)
-                K=ceil(ks); % round to smallest integer meeting error
-                vec_k = -floor((K-1)/2):ceil((K-1)/2);
-                for k = vec_k
-                    p=p+(w+2*k)*exp(-((w+2*k)^2)/2/tt); % increment sum
-                end
-                p=p/sqrt(2*pi*(tt^3)); % add con_stant term
-                
-            else % if large t is better...
-                K= ceil(kl); % round to smallest integer meeting error
-                
-                for k=1:K
-                    p=p+k*exp(-((k^2))*(pi^2)*tt/2)*sin(k*pi*w); % increment sum
-                end
-                p=p*pi; % add con_stant term
-            end
-        end
-        
-        function op = hddm_prob_ub(v,a,z)
-            %"""Probability of hitting upper boundary."""
-            if v==0
-                %otherwise op = nan since division by 0
-                op = 0.5;
-            else
-                op = (exp(-2*a*z*v) - 1) / (exp(-2*a*v) - 1);
-            end
-        end
         
         
-        function op = hddm_pdf(x,v,a,w,err)
-            %Translated from HDDM core
-            %"""Compute the likelihood of the drift diffusion model f(t|v,a,z) using the method
-            %and implementation of Navarro & Fuss, 2009.
-            %"""
-            if x <= 0
-                op = 0;
-            else
-                
-                tt = x/(a^2);% # use normalized time
-                p = ddm_def.ftt_01w(tt, w, err);% #get f(t|0,1,w)
-                
-                %% convert to f(t|v,a,w)
-                op =  p*exp(-v*a*w -(v^2)*x/2)/(a^2);
-            end
-        end
+
         
-        function op = hddm_pdf_sv(x,v,sv,a,z,err)
-            %Translated from HDDM core
-            %"""Compute the likelihood of the drift diffusion model f(t|v,a,z,sv) using the method
-            %and implementation of Navarro & Fuss, 2009.
-            %sv is the std of the drift rate
-            %"""
-            if x <= 0
-                op = 0;
-            elseif sv==0
-                op =  ddm_def.hddm_pdf(x, v, a, z, err);
-            else
-                tt = x/(a^2); %% use normalized time
-                p  = ddm_def.ftt_01w(tt, z, err); %%get f(t|0,1,w)
-                
-                %% convert to f(t|v,a,w)
-                op = exp(log(p) + ((a*z*sv)^2 - 2*a*v*z - (v^2)*x)/(2*(sv^2)*x+2))/sqrt((sv^2)*x+1)/(a^2);
-            end
-        end
+        
+
+        
+
         
         
         
-        function op = hddm_pdf_full(x,v,sv,a,z,sz,t,st,err)
-            
-            %Translated from HDDM core
-            n_st = 15;
-            n_sz = 15;
-            use_adaptive = 0;
-            %             simps_err = 1e-8;
-            %"""full pdf"""
-            %% Check if parpameters are valid (also don't compute if less than t)
-            if (z<0) || (z>1) || (a<0) || (t<0) || (st<0) || (sv<0) || (sz<0) || (sz>1) ||...
-                    ((abs(x)-(t-st/2.))<0) || (z+sz/2.>1) || (z-sz/2.<0) || (t-st/2.<0)
-                op = 0;
-                return;
-            end
-            
-            %% transform x,v,z if x is upper bound response
-            if x > 0
-                v = -v;
-                z = 1.-z;
-            end
-            x = abs(x);
-            
-            if st<1e-3
-                st = 0;
-            end
-            if sz <1e-3
-                sz = 0;
-            end
-            
-            if (sz==0)
-                if (st==0) %%sv=$,sz=0,st=0
-                    op = ddm_def.hddm_pdf_sv(x - t, v, sv, a, z, err);
-                else      %%sv=$,sz=0,st=$
-                    if use_adaptive>0
-                        error('Not copied over');
-                    else
-                        op = ddm_def.hddm_simpson_1D(x, v, sv, a, z, t, err, z, z, 0, t-st/2., t+st/2., n_st);
-                    end
-                end
-            else %%sz=$
-                if (st==0) %%sv=0,sz=$,st=0
-                    if use_adaptive
-                        error('Not copied over');
-                    else
-                        op = ddm_def.hddm_simpson_1D(x, v, sv, a, z, t, err, z-sz/2., z+sz/2., n_sz, t, t , 0);
-                    end
-                else      %%sv=0,sz=$,st=$
-                    if use_adaptive
-                        error('Not copied over');
-                    else
-                        op = ddm_def.hddm_simpson_2D(x, v, sv, a, z, t, err, z-sz/2., z+sz/2., n_sz, t-st/2., t+st/2., n_st);
-                    end
-                end
-            end
-        end
+       
         
         
         
-        function op = hddm_simpson_1D(x, v, sv, a, z, t, err, lb_z, ub_z, n_sz, lb_t, ub_t, n_st)
-            %Translated from HDDM core
-            %assert ((n_sz&1)==0 and (n_st&1)==0), "n_st and n_sz have to be even"
-            %assert ((ub_t-lb_t)*(ub_z-lb_z)==0 and (n_sz*n_st)==0), "the function is defined for 1D-integration only"
-            
-            n = max(n_st, n_sz);
-            if n_st==0 %integration over z
-                hz = (ub_z-lb_z)/n;
-                ht = 0;
-                lb_t = t;
-                ub_t = t;
-            else %integration over t
-                hz = 0;
-                ht = (ub_t-lb_t)/n;
-                lb_z = z;
-                ub_z = z;
-            end
-            S = ddm_def.hddm_pdf_sv(x - lb_t, v, sv, a, lb_z, err);
-            
-            
-            for i = 1:n
-                z_tag = lb_z + hz * i;
-                t_tag = lb_t + ht * i;
-                y = ddm_def.hddm_pdf_sv(x - t_tag, v, sv, a, z_tag, err);
-                if mod(i,2)==1 %check if i is odd
-                    S = S  + (4 * y);
-                else
-                    S = S + (2 * y);
-                end
-            end
-            
-            S = S - y; %the last term should be f(b) and not 2*f(b) so we subtract y
-            
-            S = S / ((ub_t-lb_t)+(ub_z-lb_z)); %the right function if pdf_sv()/sz or pdf_sv()/st
-            
-            op = ((ht+hz) * S / 3);
-        end
-        
-        function op = hddm_simpson_2D(x, v, sv, a, z, t, err, lb_z, ub_z, n_sz, lb_t, ub_t, n_st)
-            %Translated from HDDM core
-            %assert ((n_sz&1)==0 and (n_st&1)==0), "n_st and n_sz have to be even"
-            %assert ((ub_t-lb_t)*(ub_z-lb_z)>0 and (n_sz*n_st)>0), "the function is defined for 2D-integration only, lb_t: %f, ub_t %f, lb_z %f, ub_z %f, n_sz: %d, n_st %d" % (lb_t, ub_t, lb_z, ub_z, n_sz, n_st)
-            
-            ht = (ub_t-lb_t)/n_st;
-            S = ddm_def.hddm_simpson_1D(x, v, sv, a, z, lb_t, err, lb_z, ub_z, n_sz, 0, 0, 0);
-            
-            for i_t  = 1:n_st
-                t_tag = lb_t + ht * i_t;
-                y = ddm_def.hddm_simpson_1D(x, v, sv, a, z, t_tag, err, lb_z, ub_z, n_sz, 0, 0, 0);
-                if mod(i_t,2)==1 %check if i is odd
-                    S = S + (4 * y);
-                else
-                    S = S + (2 * y);
-                end
-            end
-            S = S - y; %the last term should be f(b) and not 2*f(b) so we subtract y
-            S = S/ (ub_t-lb_t);
-            
-            op = (ht * S / 3);
-        end
+      
     end
 end
 
