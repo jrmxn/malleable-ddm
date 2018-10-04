@@ -1370,9 +1370,9 @@ classdef ddm_def < matlab.mixin.Copyable
                     An(isnan(An))=0;
                     
                     An(:,xz>p.a) = 0;
-                    An(1:len_e_ups,1:len_e_ups) = e_ups;
+                    An(end-len_e_ups+1:end,end-len_e_ups+1:end) = e_ups;
                     An(:,xz<0) = 0;
-                    An(end-len_e_dow+1:end,end-len_e_dow+1:end) = e_dow;
+                    An(1:len_e_dow,1:len_e_dow) = e_dow;
                     
                     zn = An*zn;
                     pMat(:,ix_t) = zn;
