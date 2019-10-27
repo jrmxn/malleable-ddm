@@ -1,9 +1,9 @@
-classdef ddm_def < matlab.mixin.Copyable
-    %DDM_DEF base fitting function from which specific model instantiations
+classdef ssm_def < matlab.mixin.Copyable
+    %ssm_DEF base fitting function from which specific model instantiations
     %inherit.
     %   This function should require relatively little modification, as the
-    %   idea is that specific model instances (ddm_def_base, and
-    %   ddm_def_conflict are provided as examples) inherit from this class.
+    %   idea is that specific model instances (ssm_def_base, and
+    %   ssm_def_conflict are provided as examples) inherit from this class.
     
     properties
         subject = '';
@@ -20,7 +20,7 @@ classdef ddm_def < matlab.mixin.Copyable
         fit = [];
         info = [];
         mcmc = [];
-        ddm_pdf = [];
+        ssm_pdf = [];
         pmod = struct;
     end
     properties (Transient = true)
@@ -28,7 +28,7 @@ classdef ddm_def < matlab.mixin.Copyable
     end
     
     methods
-        function obj = ddm_def
+        function obj = ssm_def
             %light initialisation so functions can be used easily
             obj.modelclass = '';%used to set file names
             obj.info.version = sprintf('0.0.7');
@@ -44,17 +44,17 @@ classdef ddm_def < matlab.mixin.Copyable
         end
         
         
-        function ddm_writecode(obj,filename)
+        function ssm_writecode(obj,filename)
             fid = fopen(filename,'wt');
             fprintf(fid, '%s',obj.info.code);
             fclose(fid);
         end
         
-        function g = ddm_print_search(obj,quiet)
+        function g = ssm_print_search(obj,quiet)
             if nargin==1,quiet = false;end
             if isempty(obj.modelKey)
                 fprintf('Model key not set. Setting it...\n');
-                obj.modelKey = obj.ddm_get_instance('keyf');
+                obj.modelKey = obj.ssm_get_instance('keyf');
             end
             g = obj.modelKey(find(obj.debi_model(obj.id_search,'de','bi')));
             if not(quiet)
@@ -62,12 +62,12 @@ classdef ddm_def < matlab.mixin.Copyable
             end
         end
         
-        function g = ddm_print_model(obj,quiet)
+        function g = ssm_print_model(obj,quiet)
             %display the binary representation of the current model
             if nargin==1,quiet = false;end
             if isempty(obj.modelKey)
                 fprintf('Model key not set. Setting it...\n');
-                obj.modelKey = obj.ddm_get_instance('keyf');
+                obj.modelKey = obj.ssm_get_instance('keyf');
             end
             g = obj.modelKey(find(obj.debi_model(obj.id_model,'de','bi')));
             if not(quiet)
@@ -76,7 +76,7 @@ classdef ddm_def < matlab.mixin.Copyable
         end
         
         
-        function ddm_delete_saved(obj,flag)
+        function ssm_delete_saved(obj,flag)
             %delete the saved file associated with this model
             if not(exist('flag','var')==1)
                 flag = '';
@@ -93,11 +93,11 @@ classdef ddm_def < matlab.mixin.Copyable
                 elseif strcmpi(ip,'n')
                     fprintf('OK. Not deleting.\n');
                 else
-                    fprintf('What? Not deleteing.\n');
+                    fprintf('Invalid input. Not deleteing.\n');
                 end
             end
             if markfordeletion
-                delete(obj.ddm_get_save_path);
+                delete(obj.ssm_get_save_path);
             end
         end
         
@@ -113,7 +113,7 @@ classdef ddm_def < matlab.mixin.Copyable
             obj.id_model = id_model_de;
             obj.id_search = id_search_de;
             obj.subject = '**';
-            [~,f_base] = fileparts(obj.ddm_get_save_path);
+            [~,f_base] = fileparts(obj.ssm_get_save_path);
             f = fullfile(f_path,[f_base,'.mat']);
             vec_empty = [];
             p_mat = struct([]);clear p_mat;%annoying to init properly.
@@ -176,7 +176,7 @@ classdef ddm_def < matlab.mixin.Copyable
             p_mat = struct2table(p_mat);
         end
         
-        function ddm_init(obj, id_model,id_search,allow_load)
+        function ssm_init(obj, id_model,id_search,allow_load)
             %Set the simulation settings (s), and the optimisation settings
             %(opt). id_model and if_fit (which are decimals,
             % which correspond to binary vectors referencing the
@@ -188,7 +188,7 @@ classdef ddm_def < matlab.mixin.Copyable
             if isempty(obj.data)&&allow_load
                 get_data(obj);
             end
-            obj.modelKey = ddm_get_instance(obj, 'keyf');
+            obj.modelKey = ssm_get_instance(obj, 'keyf');
             
             obj.id_model = id_model;
             obj.id_search = id_search;
@@ -196,7 +196,7 @@ classdef ddm_def < matlab.mixin.Copyable
             if not(isnumeric(id_model)&(numel(id_model)==1)),error(err_str);end
             if not(isnumeric(id_search)&(numel(id_search)==1)),error(err_str);end
             
-            obj.s.fit_n = sum(ddm_def.debi_model(obj.id_search,'de','bi'));
+            obj.s.fit_n = sum(ssm_def.debi_model(obj.id_search,'de','bi'));
             obj.s.minAlgo = 'nll';
             obj.s.reinit = false;
             obj.s.dt = 1e-3;
@@ -207,11 +207,11 @@ classdef ddm_def < matlab.mixin.Copyable
             obj.s.nits = 50e3;
             %             obj.s.inittype = 'random';
             obj.s.path_data = '';
-            obj.ddm_pdf = @(a,b) obj.ddm_pdf_ana(a,b);
-            %             obj.ddm_pdf = @(a,b,c) obj.ddm_pdf_bru(a,b,c,obj.s.nits);
-            %             obj.ddm_pdf = @(a,b,c) obj.ddm_pdf_trm(a,b,c,obj.s.dx);
+            obj.ssm_pdf = @(a,b) obj.ssm_pdf_ana(a,b);
+            %             obj.ssm_pdf = @(a,b,c) obj.ssm_pdf_bru(a,b,c,obj.s.nits);
+            %             obj.ssm_pdf = @(a,b,c) obj.ssm_pdf_trm(a,b,c,obj.s.dx);
             
-            id_search_index  = find(ddm_def.debi_model(obj.id_search,'de','bi'));
+            id_search_index  = find(ssm_def.debi_model(obj.id_search,'de','bi'));
             
             % Set the parameters over which to optimise from modelType spec
             co = 1;
@@ -229,22 +229,22 @@ classdef ddm_def < matlab.mixin.Copyable
             obj.opt.ps_AccelerateMesh = true;%should only do if smooth
             obj.opt.computeAlgo = 'PS';
             if strcmpi(obj.s.minAlgo,'nll')
-                obj.opt.h_cost = @obj.ddm_cost_pdf_nll;
+                obj.opt.h_cost = @obj.ssm_cost_pdf_nll;
             else
                 error('minAlgo not defined');
             end
             
         end
         
-        function ddm_fit_init(obj,fit_ix_)
+        function ssm_fit_init(obj,fit_ix_)
             % Initialise the parameters prior to fitting
             % i.e. get a default value, a random value or set to 0, depdent
             % on whether a specific parameter is in the model name, model
             % search, or omitted.
             %if you want to run this manually you run it like this:
-            %             sr.ddm_fit_init(sr.fit_ix + 1)
+            %             sr.ssm_fit_init(sr.fit_ix + 1)
             % which then initialises it, but doesn't actually increase sr.fit_ix which
-            % is then increased in ddm_fit
+            % is then increased in ssm_fit
             if isempty(obj.data)
                 get_data(obj);
             end
@@ -261,12 +261,12 @@ classdef ddm_def < matlab.mixin.Copyable
             if (fit_ix_==1)||obj.s.reinit
                 %if first model fit for this object or we want to reinitialise
                 %p is defined from a full set of defaults/random init
-                init_p_full_random = obj.ddm_get_instance(['init_' 'random']);
-                init_p_full_default = obj.ddm_get_instance(['init_' 'default']);
+                init_p_full_random = obj.ssm_get_instance(['init_' 'random']);
+                init_p_full_default = obj.ssm_get_instance(['init_' 'default']);
                 % and now we need to reduce it to match the specific model
                 % configuration we are testing.
-                id_model_index = find(ddm_def.debi_model(obj.id_model,'de','bi'));
-                id_search_index  = find(ddm_def.debi_model(obj.id_search,'de','bi'));
+                id_model_index = find(ssm_def.debi_model(obj.id_model,'de','bi'));
+                id_search_index  = find(ssm_def.debi_model(obj.id_search,'de','bi'));
                 
                 for ix_parameter_cell = 1:length(obj.modelKey)
                     parameter_string = obj.modelKey{ix_parameter_cell};
@@ -310,22 +310,22 @@ classdef ddm_def < matlab.mixin.Copyable
             fprintf('Getting initial cost...: ');
             fit_init.nll = obj.opt.h_cost([],fit_init.p);
             fprintf('%0.3f\n',fit_init.nll);
-            fit_init.p_lb = obj.ddm_get_instance('lbound');
-            fit_init.p_ub = obj.ddm_get_instance('ubound');
+            fit_init.p_lb = obj.ssm_get_instance('lbound');
+            fit_init.p_ub = obj.ssm_get_instance('ubound');
             
             obj.fit(fit_ix_).init = fit_init;
         end
         
-        function ddm_fit(obj)
+        function ssm_fit(obj)
             %Actually run the parameter search. Uses pattern search
             %current, which works well. Could be extended to other methods
             %simply by adding more options for opt.computeAlgo
             fit_ix_ = obj.fit_ix + 1;
             
             if length(obj.fit)<fit_ix_
-                ddm_fit_init(obj,fit_ix_);
+                ssm_fit_init(obj,fit_ix_);
             else
-                fprintf('Assuming ddm fit was manually initialised.\n');
+                fprintf('Assuming ssm fit was manually initialised.\n');
             end
             
             fit_init = obj.fit(fit_ix_).init;
@@ -380,7 +380,7 @@ classdef ddm_def < matlab.mixin.Copyable
             obj.fit(fit_ix_).id_model = obj.id_model;
             obj.fit(fit_ix_).id_search = obj.id_search;
             obj.fit(fit_ix_).s = obj.s;
-            obj.fit(fit_ix_).ddm_pdf = obj.ddm_pdf;
+            obj.fit(fit_ix_).ssm_pdf = obj.ssm_pdf;
             obj.fit(fit_ix_).modelKey = obj.modelKey;
             obj.fit(fit_ix_).opt = obj.opt;
             obj.fit(fit_ix_).info = obj.info;
@@ -390,7 +390,7 @@ classdef ddm_def < matlab.mixin.Copyable
             
         end
         
-        function ddm_mcmc(obj,varargin)
+        function ssm_mcmc(obj,varargin)
             % An implementation of MCMC for single fits. Not tested! Use
             % with caution. Also note that it uses gwmcmc (an external MCMC
             % library that has to be added to path).
@@ -420,7 +420,7 @@ classdef ddm_def < matlab.mixin.Copyable
                 ll = sum(log(ll));
             end
             
-            function minit = ddm_mcmc_minit(obj,x,xl,n_s)
+            function minit = ssm_mcmc_minit(obj,x,xl,n_s)
                 %this is a bit ad-hoc, but I am getting the starting
                 %chains proportional to how close they are to the optimal
                 %found by patternsearch.
@@ -429,7 +429,7 @@ classdef ddm_def < matlab.mixin.Copyable
                 n_init_rand = 5e3;
                 x_rand = nan(n_init_rand,obj.s.fit_n);
                 for ix_draw_prior = 1:n_init_rand
-                    x_rand(ix_draw_prior,:) = obj.p2x(xl,ddm_get_instance(obj, 'init_random'));
+                    x_rand(ix_draw_prior,:) = obj.p2x(xl,ssm_get_instance(obj, 'init_random'));
                 end
                 %get distance from ps optimum
                 xd = x_rand-x;
@@ -446,10 +446,10 @@ classdef ddm_def < matlab.mixin.Copyable
             %use most uptodata p value
             p = obj.fit(obj.fit_ix).p;
             xl = obj.s.xl;
-            h_priors = ddm_get_instance(obj, 'prior');
+            h_priors = ssm_get_instance(obj, 'prior');
             x = obj.p2x(xl,p);
             
-            minit = ddm_mcmc_minit(obj,x,xl,opt_.n_s);
+            minit = ssm_mcmc_minit(obj,x,xl,opt_.n_s);
             
             %negative because by default cost function returns the nll
             loglike = @(m) -obj.opt.h_cost(m,p);
@@ -490,30 +490,30 @@ classdef ddm_def < matlab.mixin.Copyable
         end
         
         
-        function f_savepath = ddm_get_save_path(obj, f_path)
+        function f_savepath = ssm_get_save_path(obj, f_path)
             %return full path to the file we are saving to
             if not(exist('f_path','var')==1),f_path = fullfile('sim',obj.modelclass);end
             if isempty(f_path),f_path = fullfile('sim',obj.modelclass);end
             f_name = sprintf('%s_%s_%s_%s%s.mat',...
                 obj.subject,...
-                ddm_def.debi_model(obj.id_model,'de','st'),...
-                ddm_def.debi_model(obj.id_search,'de','st'),...
+                ssm_def.debi_model(obj.id_model,'de','st'),...
+                ssm_def.debi_model(obj.id_search,'de','st'),...
                 obj.modelclass,...
                 obj.extra_string);
             if not(exist(f_path,'dir')==7),mkdir(f_path);end
             f_savepath = fullfile(f_path,f_name);
         end
-        function f_savepath = ddm_save(obj, f_path)
+        function f_savepath = ssm_save(obj, f_path)
             if not(exist('f_path','var')==1),f_path = '';end
-            f_savepath = ddm_get_save_path(obj, f_path);
+            f_savepath = ssm_get_save_path(obj, f_path);
             
             save(f_savepath,'obj');
         end
         
-        function [f_savepath,obj_] = ddm_save_properties(obj, f_path)
+        function [f_savepath,obj_] = ssm_save_properties(obj, f_path)
             % save the files without the OOP components
             if not(exist('f_path','var')==1),f_path = '';end
-            f_savepath = ddm_get_save_path(obj, f_path);
+            f_savepath = ssm_get_save_path(obj, f_path);
             f_savepath = strrep(f_savepath,'.mat','_properties.mat');
             
             prop_names = properties(obj);
@@ -526,25 +526,25 @@ classdef ddm_def < matlab.mixin.Copyable
             save(f_savepath,'obj_');
         end
         
-        function [t_ups,t_dow,p_ups,p_dow,correct_side] = ddm_data_draw(obj,p,N)
+        function [t_ups,t_dow,p_ups,p_dow,correct_side] = ssm_data_draw(obj,p,N)
             %once we have fitted a model, draw from that model
-            if contains(func2str(obj.ddm_pdf),'ddm_prt_ana')
+            if contains(func2str(obj.ssm_pdf),'ssm_prt_ana')
                 error(['Need a full pdf generator from which to draw.', ...
                     'Change the pdf function handle.',...
-                    'e.g.: obj.ddm_pdf = @(a,b) obj.ddm_pdf_ana(a,b);']);
+                    'e.g.: obj.ssm_pdf = @(a,b) obj.ssm_pdf_ana(a,b);']);
             end
             lt  = 0:obj.s.dt:obj.s.T-obj.s.dt;
             
-            [~,~,t,cdf_dow,cdf_ups,correct_side] = obj.ddm_pdf(p,lt);
-            [t_ups,t_dow,p_ups,p_dow] = obj.ddm_pdf2rt(cdf_ups,cdf_dow,t,N);
+            [~,~,t,cdf_dow,cdf_ups,correct_side] = obj.ssm_pdf(p,lt);
+            [t_ups,t_dow,p_ups,p_dow] = obj.ssm_pdf2rt(cdf_ups,cdf_dow,t,N);
         end
         
         
         
-        function outputArg = ddm_get_instance(obj, deftype)
+        function outputArg = ssm_get_instance(obj, deftype)
             % helper function dealing with model specification
             [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ...
-                obj.ddm_def_instance;
+                obj.ssm_def_instance;
             
             for ix_modelkey_var = 1:length(modelkey_var)
                 modelkey_rev.(modelkey_var{ix_modelkey_var}) = ix_modelkey_var;
@@ -571,9 +571,9 @@ classdef ddm_def < matlab.mixin.Copyable
         
         
         
-        function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
+        function p_mat = ssm_cost_add_stim_dependencies(obj,p_mat)
             % Important function to add experimental conditions into the
-            % model fitting procedure (see ddm_def_conflict for use)
+            % model fitting procedure (see ssm_def_conflict for use)
             p_mat.skip = zeros(height(p_mat),1);
         end
         
@@ -618,7 +618,7 @@ classdef ddm_def < matlab.mixin.Copyable
             p_mat = struct2table(repmat(p,height(obj.data),1));
             
             %Add trial-trial stimulus dependencies (e.g. coherence, conflict etc.)
-            p_mat = obj.ddm_cost_add_stim_dependencies(p_mat);
+            p_mat = obj.ssm_cost_add_stim_dependencies(p_mat);
             
             p_mat_unique = unique(p_mat);
             p_mat_unique(p_mat_unique.skip>0,:) = [];
@@ -668,10 +668,10 @@ classdef ddm_def < matlab.mixin.Copyable
                 
                 title_ = sprintf('%s:\n%0.1f',name_change_label,px.(name_change));
                 %Get simulated pdf
-                if contains(func2str(obj.ddm_pdf),'ddm_prt_ana')
-                    [pdf_dow,pdf_ups,rt,~,~] = obj.ddm_pdf_ana(px,lt);
+                if contains(func2str(obj.ssm_pdf),'ssm_prt_ana')
+                    [pdf_dow,pdf_ups,rt,~,~] = obj.ssm_pdf_ana(px,lt);
                 else
-                    [pdf_dow,pdf_ups,rt,~,~] = obj.ddm_pdf(px,lt);
+                    [pdf_dow,pdf_ups,rt,~,~] = obj.ssm_pdf(px,lt);
                 end
                 
                 %Get data pdf
@@ -711,13 +711,13 @@ classdef ddm_def < matlab.mixin.Copyable
             xlabel('RT (s)')
         end
         
-        function [nll_app,aic_app,aicc_app,bic_app,ll_vec] = ddm_cost_pdf_nll(obj,x,p)
+        function [nll_app,aic_app,aicc_app,bic_app,ll_vec] = ssm_cost_pdf_nll(obj,x,p)
             % Generate the NLL, AIC etc. Acts as the cost function for the
             % optimisation.
             % Works by finding all unique trial conditions, performing the
             % model simulation, then evaluating the simulations against the
             % data.
-            % N.B. The function is current written in terms of right/wrong,
+            % N.B. The function is currently written in terms of right/wrong,
             % but this is generally equivalent to a binary choice (although
             % it would be clearer if it was directly specified as a binary
             % choice).
@@ -736,8 +736,8 @@ classdef ddm_def < matlab.mixin.Copyable
             %Add trial-trial stimulus dependencies (e.g. coherence, conflict etc.)
             % E.g. if 50% of our trials are conflict, and this is important
             % p_mat is now augmented with this information (after correct
-            % sepcification of ddm_cost_add_stim_dependencies)
-            p_mat = obj.ddm_cost_add_stim_dependencies(p_mat);
+            % sepcification of ssm_cost_add_stim_dependencies)
+            p_mat = obj.ssm_cost_add_stim_dependencies(p_mat);
             
             %and now find all the unique models that we actually need to
             %evaluate
@@ -762,17 +762,17 @@ classdef ddm_def < matlab.mixin.Copyable
                 t_cr = obj.data.rt(case_right&case_config&not(case_nan));
                 t_cw = obj.data.rt(case_wrong&case_config&not(case_nan));
                 
-                if contains(func2str(obj.ddm_pdf),'ddm_prt_ana')
+                if contains(func2str(obj.ssm_pdf),'ssm_prt_ana')
                     
-                    [pRT_g_cr, p_cr] = obj.ddm_pdf(px,+t_cr);
-                    [pRT_g_cw, ~] = obj.ddm_pdf(px,-t_cw);
+                    [pRT_g_cr, p_cr] = obj.ssm_pdf(px,+t_cr);
+                    [pRT_g_cw, ~] = obj.ssm_pdf(px,-t_cw);
                     pRT_g_cr_x_p_cr = pRT_g_cr*p_cr;
                     pRT_g_cw_x_p_cw = pRT_g_cw*(1-p_cr);
                     
                 else
                     ix_cr = round(t_cr/obj.s.dt);
                     ix_cw = round(t_cw/obj.s.dt);
-                    [pdf_cw,pdf_cr,~,cdf_cw,cdf_cr] = obj.ddm_pdf(px,lt);
+                    [pdf_cw,pdf_cr,~,cdf_cw,cdf_cr] = obj.ssm_pdf(px,lt);
                     p_cr = cdf_cr(end);
                     p_cw = cdf_cw(end);
                     pRT_g_cr_x_p_cr = pdf_cr(ix_cr)'*p_cr;
@@ -809,7 +809,7 @@ classdef ddm_def < matlab.mixin.Copyable
             nll_app = -ll_app;
         end
         
-        function  [p_mat_unique,pct] = ddm_get_prctile( obj, varargin)
+        function  [p_mat_unique,pct] = ssm_get_prctile( obj, varargin)
             % Functions for display purposes - currently not very clean!
             %this method generates the expected DV trace for a given trial
             d.N = 2000;
@@ -850,7 +850,7 @@ classdef ddm_def < matlab.mixin.Copyable
             p_mat = struct2table(repmat(p,height(obj.data),1));
             
             %Add trial-trial stimulus dependencies (e.g. coherence, conflict etc.)
-            p_mat = obj.ddm_cost_add_stim_dependencies(p_mat);
+            p_mat = obj.ssm_cost_add_stim_dependencies(p_mat);
             
             p_mat_unique = unique(p_mat);
             p_mat_unique(p_mat_unique.skip>0,:) = [];
@@ -894,7 +894,7 @@ classdef ddm_def < matlab.mixin.Copyable
                 t_ups = obj.data.rt(case_ups&case_config&not(case_nan));
                 t_dow = obj.data.rt(case_dow&case_config&not(case_nan));
                 
-                [t_ups_sim,t_dow_sim,~,~,correct_side] = obj.ddm_data_draw(px,v.N);
+                [t_ups_sim,t_dow_sim,~,~,correct_side] = obj.ssm_data_draw(px,v.N);
                 %figure out correct/incorrect
                 t_sim = [t_ups_sim,t_dow_sim];
                 c_sim = [true(size(t_ups_sim)),false(size(t_dow_sim))];
@@ -991,7 +991,7 @@ classdef ddm_def < matlab.mixin.Copyable
             p_mat_unique.acavg_ups_sim = S_ac_avg;
             %
         end
-        function  [dv_mea,dv_sem,dv_n,rt,dv_ndt_mea] = ddm_eeg_match( obj, varargin)
+        function  [dv_mea,dv_sem,dv_n,rt,dv_ndt_mea] = ssm_eeg_match( obj, varargin)
             %this method generates the expected DV trace for a given trial
             d.dt_win = 0.01;
             d.avgmet = 'met_mean';
@@ -1008,7 +1008,7 @@ classdef ddm_def < matlab.mixin.Copyable
             p_mat = struct2table(repmat(p,height(obj.data),1));
             
             %Add trial-trial stimulus dependencies (e.g. coherence, conflict etc.)
-            p_mat = obj.ddm_cost_add_stim_dependencies(p_mat);
+            p_mat = obj.ssm_cost_add_stim_dependencies(p_mat);
             
             p_mat_unique = unique(p_mat);
             p_mat_unique(p_mat_unique.skip>0,:) = [];
@@ -1029,7 +1029,7 @@ classdef ddm_def < matlab.mixin.Copyable
                 px_array = table2array(p_mat_unique(ix_p_config,:));
                 case_config = all(p_mat_array==px_array,2);
                 
-                [~,~,rt,~,~,~,vec_rt_sim,vec_correct_sim_ix,td_tot,x] = obj.ddm_pdf_bru(px,lt,obj.s.nits);
+                [~,~,rt,~,~,~,vec_rt_sim,vec_correct_sim_ix,td_tot,x] = obj.ssm_pdf_bru(px,lt,obj.s.nits);
                 
                 if ix_p_config == 1
                     if size(x,2)~=length(rt)
@@ -1095,9 +1095,9 @@ classdef ddm_def < matlab.mixin.Copyable
     end
     
     methods (Access = protected)
-        function [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ddm_def_instance(obj)
+        function [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ssm_def_instance(obj)
             % Model specification. To be overwritten by inherited
-            % functions. See ddm_def_conflict for an example.
+            % functions. See ssm_def_conflict for an example.
             ix = 1;
             
             p_ = 's';
@@ -1185,7 +1185,7 @@ classdef ddm_def < matlab.mixin.Copyable
     end
     methods (Static)
         
-        function  [pdf_,p_cr] = ddm_prt_ana(p,rt)
+        function  [pdf_,p_cr] = ssm_prt_ana(p,rt)
             err = 1e-8;
             % use functions from HDDM
             p_cr = hddm_prob_ub(p.v,p.a,p.z);
@@ -1193,8 +1193,8 @@ classdef ddm_def < matlab.mixin.Copyable
             pdf_ = arrayfun(@(x) h_pdf(x),+rt);
             
         end
-        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ddm_pdf_ana(p,rt)
-            if any(rt<0),error(['-rt is only usable for ddm_prt_ana.\n' ...
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ssm_pdf_ana(p,rt)
+            if any(rt<0),error(['-rt is only usable for ssm_prt_ana.\n' ...
                     'In normal pdf functions you ask for +rt, but you get '...
                     'out pdf for both choices. Maybe this should be changed '...
                     'in future. Also this check probably takes time since '...
@@ -1244,7 +1244,7 @@ classdef ddm_def < matlab.mixin.Copyable
                 
             end
         end
-        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side,vec_rt,vec_correct,td_tot,x] = ddm_pdf_bru(p,lt,N_its)
+        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side,vec_rt,vec_correct,td_tot,x] = ssm_pdf_bru(p,lt,N_its)
             % brute force method of generating likelihood
             correct_side = 1;
             dt = lt(2)-lt(1);
@@ -1310,7 +1310,7 @@ classdef ddm_def < matlab.mixin.Copyable
             rt = (lt(1:end-1)+lt(2:end))*0.5;
         end
         
-        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ddm_pdf_trm(p,lt,dx)
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ssm_pdf_trm(p,lt,dx)
             % transition matrix based method of generating likelihood
             correct_side = 1;
             %
@@ -1384,7 +1384,7 @@ classdef ddm_def < matlab.mixin.Copyable
             cdf_dow = p_sv*cdf_dow;
             cdf_ups = p_sv*cdf_ups;
             %
-            [cdf_ups,cdf_dow] = ddm_def.cdf_t_st(cdf_ups,cdf_dow,lt,p.t,p.st,dt);
+            [cdf_ups,cdf_dow] = ssm_def.cdf_t_st(cdf_ups,cdf_dow,lt,p.t,p.st,dt);
             
             cdf_ups_end = cdf_ups(end);
             cdf_dow_end = cdf_dow(end);
@@ -1396,8 +1396,8 @@ classdef ddm_def < matlab.mixin.Copyable
             rt = 0.5*(lt(1:end-1)+lt(2:end));
         end
         
-        function [t_ups,t_dow,p_ups,p_dow] = ddm_pdf2rt(cdf_ups,cdf_dow,t_math,N,varargin)
-            % Second part of ddm_data_draw which converts uniform draws to
+        function [t_ups,t_dow,p_ups,p_dow] = ssm_pdf2rt(cdf_ups,cdf_dow,t_math,N,varargin)
+            % Second part of ssm_data_draw which converts uniform draws to
             % draws from our distribution.
             d.balanced = true;
             %%

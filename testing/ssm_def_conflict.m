@@ -1,17 +1,17 @@
-classdef ddm_def_conflict < ddm_def
+classdef ssm_def_conflict < ssm_def
     
     properties
     end
     
     methods
-        function obj = ddm_def_conflict
+        function obj = ssm_def_conflict
             %light initialisation so functions can be used easily
             obj.modelclass = 'conflict';
             obj.path_data = fullfile('testing','testing.csv');
         end
         
-        function p_mat = ddm_cost_add_stim_dependencies(obj,p_mat)
-            p_mat = ddm_cost_add_stim_dependencies@ddm_def(obj,p_mat);
+        function p_mat = ssm_cost_add_stim_dependencies(obj,p_mat)
+            p_mat = ssm_cost_add_stim_dependencies@ssm_def(obj,p_mat);
             p_mat.c = obj.data.stim_conflict;
         end
         
@@ -20,7 +20,7 @@ classdef ddm_def_conflict < ddm_def
     methods
         function [p_mat,sr_full] = aux_gather(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin)
             if not(exist('minorfin','var')==1),minorfin = 'fin';end
-            [p_mat,sr_full] = aux_gather@ddm_def(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin);
+            [p_mat,sr_full] = aux_gather@ssm_def(obj,f_path,id_model_de,id_search_de,sub_cell,minorfin);
             
             for ix_sub = 1:length(sr_full)
                 ix_row_p_mat = find(strcmpi(p_mat.subject,sr_full(ix_sub).subject));
@@ -38,10 +38,10 @@ classdef ddm_def_conflict < ddm_def
         end
     end
     methods (Access = protected)
-        function [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ddm_def_instance(obj)
+        function [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ssm_def_instance(obj)
             
             %use the base method first (rather than redefining the whole thing)
-            [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ddm_def_instance@ddm_def(obj);
+            [modelkey_var,pran_,pdef_,plbound_,pubound_,prior_] = ssm_def_instance@ssm_def(obj);
             ix = length(modelkey_var)+1;
             
             p_ = 'b';
@@ -71,7 +71,7 @@ classdef ddm_def_conflict < ddm_def
     end
     methods (Static)
         
-        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side,vec_rt,vec_correct,td_tot,x] = ddm_pdf_bru(p,lt,N_its)
+        function [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side,vec_rt,vec_correct,td_tot,x] = ssm_pdf_bru(p,lt,N_its)
             correct_side = 1;
             rt = (lt(1:end-1)+lt(2:end))*0.5;
             
@@ -140,7 +140,7 @@ classdef ddm_def_conflict < ddm_def
             pdf_dow = diff(cdf_dow)/dt;
         end
         
-        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ddm_pdf_trm(p,lt,dx)
+        function  [pdf_dow,pdf_ups,rt,cdf_dow,cdf_ups,correct_side] = ssm_pdf_trm(p,lt,dx)
             correct_side = 1;
             %
             dt = lt(2)-lt(1);
@@ -223,7 +223,7 @@ classdef ddm_def_conflict < ddm_def
             cdf_dow = p_sv*cdf_dow;
             cdf_ups = p_sv*cdf_ups;
             %
-            [cdf_ups,cdf_dow] = ddm_def.cdf_t_st(cdf_ups,cdf_dow,lt,p.t,p.st,dt);
+            [cdf_ups,cdf_dow] = ssm_def.cdf_t_st(cdf_ups,cdf_dow,lt,p.t,p.st,dt);
             
             cdf_ups_end = cdf_ups(end);
             cdf_dow_end = cdf_dow(end);

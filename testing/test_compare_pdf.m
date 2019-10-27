@@ -2,7 +2,7 @@ clear;
 addpath('..');
 addpath(fullfile('..','ext_mod'));
 %%
-% Compare likelihood evaluations for DDM without extensions
+% Compare likelihood evaluations for ssm without extensions
 % analytical solution from NF/HDDM is most accurate
 % transition matrix approach and brute force approach approximate
 % analytical solution closely.
@@ -28,15 +28,15 @@ p.z = 0.5;
 p.a = 1.0;
 %%
 tic
-[pdf_cw_ana,pdf_cr_ana,rt_ana] = sr.ddm_pdf_ana(p,lt);
+[pdf_cw_ana,pdf_cr_ana,rt_ana] = sr.ssm_pdf_ana(p,lt);
 toc
 %%
 tic
-[pdf_cw_trm,pdf_cr_trm,rt_trm] = sr.ddm_pdf_trm(p,lt,sr.s.dx);
+[pdf_cw_trm,pdf_cr_trm,rt_trm] = sr.ssm_pdf_trm(p,lt,sr.s.dx);
 toc
 %%
 tic
-[pdf_cw_bru,pdf_cr_bru,rt_bru,cdf_dow,cdf_ups] = sr.ddm_pdf_bru(p,lt,sr.s.nits);
+[pdf_cw_bru,pdf_cr_bru,rt_bru,cdf_dow,cdf_ups] = sr.ssm_pdf_bru(p,lt,sr.s.nits);
 toc
 %%
 close all;clf;hold on;

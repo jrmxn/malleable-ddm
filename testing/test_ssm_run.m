@@ -1,5 +1,5 @@
-% Simplest demonstration of ddm_def
-% Define the simplest inheriting function ddm_def_base.m
+% Simplest demonstration of ssm_def
+% Define the simplest inheriting function ssm_def_base.m
 %%
 clear;
 f_path_data = 'testing.csv';
@@ -9,10 +9,10 @@ for ix_fit_type = [1, 2, 3]
     for ix_sub = 1:3
         
         clear sr;
-        sr = ddm_def_base;
+        sr = ssm_def_base;
         sr.subject = sprintf('sub%02d',ix_sub);
         sr.path_data = fullfile('testing.csv');
-        mk = sr.ddm_get_instance('keyr');
+        mk = sr.ssm_get_instance('keyr');
         rng(ix_sub);
         %% Define the model parameters included in the model
         id_model = sr.debi_model(0,'de','bi');
@@ -39,47 +39,47 @@ for ix_fit_type = [1, 2, 3]
         id_search_de = sr.debi_model(id_search,'bi','de');
 
         % Initialise the fit
-        sr.ddm_init(id_model_de,id_search_de);
+        sr.ssm_init(id_model_de,id_search_de);
         
         %temporary
         sr.opt.parallelsearch = false;
         
         
         % Set the method used to calculate the likelihood:
-        % In reality you would choose one of these methods, ddm_pdf_ana
+        % In reality you would choose one of these methods, ssm_pdf_ana
         % (converted from Navaro and Fuss and HDDM) if you have a DDM
         % (including if you have noise non-decision time, noise in drift
         % and noise in starting point).
-        % For more complex models you would use ddm_pdf_trm which defines
-        % the DDM with a transition matrix. For specific cases (and to
+        % For more complex models you would use ssm_pdf_trm which defines
+        % the ssm with a transition matrix. For specific cases (and to
         % check correct specification of transition matrix), you may want
-        % to compute with a brute force method (ddm_prt_ana) - not really
+        % to compute with a brute force method (ssm_prt_ana) - not really
         % intended for optimisation.
         if ix_fit_type ==1
             %the HDDM method
             sr.modelclass = 'base_ana_prt';%just a name for the folder
-            sr.ddm_pdf = @(a,b) sr.ddm_prt_ana(a,b);
+            sr.ssm_pdf = @(a,b) sr.ssm_prt_ana(a,b);
         elseif ix_fit_type==2
             %the transition matrix method
             sr.modelclass = 'base_trm';%just a name for the folder
             %use relaxed values to get in ballpark of solution:
             sr.s.dx = 0.025;%speed things up a bit  (not as accurate, for final optimisation would say <0.005)
             sr.s.dt = 1e-3;%speed things up a bit (not as accurate, for final optimisation would say <5e-4)
-            sr.ddm_pdf = @(a,b) sr.ddm_pdf_trm(a,b,sr.s.dx);
+            sr.ssm_pdf = @(a,b) sr.ssm_pdf_trm(a,b,sr.s.dx);
         elseif ix_fit_type==3
             %brute force method
             sr.modelclass = 'base_bru';%just a name for the folder
             sr.s.nits = 10e3;%(only 10e3 - not very accurate)
-            sr.ddm_pdf = @(a,b) sr.ddm_pdf_bru(a,b,sr.s.nits);
+            sr.ssm_pdf = @(a,b) sr.ssm_pdf_bru(a,b,sr.s.nits);
         elseif ix_fit_type == 4
             % buggy - needs fixing
             %the HDDM method used to evaluate the entire PDF (a bit slower,
             %mainly used for plotting)
             sr.modelclass = 'base_ana';%just a name for the folder
-            sr.ddm_pdf = @(a,b) sr.ddm_pdf_ana(a,b);
+            sr.ssm_pdf = @(a,b) sr.ssm_pdf_ana(a,b);
         end
         
-        sr.ddm_fit;
-        sr.ddm_save;
+        sr.ssm_fit;
+        sr.ssm_save;
     end
 end

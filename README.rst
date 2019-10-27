@@ -4,19 +4,19 @@ Introduction
 
 :Author: James R. McIntosh
 :Contact: j.mcintosh@columbia.edu
-:Version: 0.0.7
+:Version: 0.0.8
 
 Purpose
 =======
 
-To allow rapid prototyping of DDM extensions, for example for conflict tasks.  
+To allow rapid prototyping of SSM extensions, for example for conflict tasks.
 Code is a synthesis of tricks that I have been using to run drift-diffusion based models for a few years, as well as some taken from the HDDM toolbox.
 
 Features
 ========
 
 - Easily extensible framework:
-	- Inherit from a single function (ddm_def.m)
+	- Inherit from a single function (ssm_def.m)
 	- Define all your additional model parameters
 	- Specify the link between data (e.g. trial-trial eeg, visual stimuli) and model inputs
 	- Write your likelihood function making use of model parameters and model inputs (examples provided)
@@ -35,32 +35,32 @@ Features
 	- Calculation decision-variable path with transition matrix iterative multiplication - easy to extend, quite fast with reasonable discretization (apart from for specific parameters, e.g. including noise in drift is a x10 slow down).
 
 Notes on function
-========
+==================
 
 Without using an analytical solution we do not have the advantage of being able to generate likelihoods without generating the whole p(rt,accuracy|parameters,conditions).  
 For each trial we consequently create a structure of parameters and conditions e.g. parameters: p(ix_trial).s = 1;p(ix_trial).v = 1; condition:p.(ix_trial).conflict = 1;  
 Then this structure is stripped of duplicates, the likelihood density is estimated, and the relevant accuracies/rt are evaluated from it.  
 
 Weaknesses
-========
+===========
 It's not hierarchical.  
-Straying from the DDM means you lose the advantage of analytical solutions - i.e. things get slow(er)!
+Straying from the SSM means you lose the advantage of analytical solutions - i.e. things get slow(er)!
 For reasonable computational speed, the transition matrix approach is not quite as accurate as the analytical solutions of NF/HDDM - although considerably better than using brute force simulation. The main deviation of the transition matrix approach to the analytical solution comes from setting the time step too low (see todo, for potential fix).  
 
 Features
 ========
 For example, adding a conflict dependent bias is straight forwards:  
 
-1) inherit from ddm_def
+1) inherit from ssm_def
 
-2) modify the method ddm_cost_add_stim_dependencies so that the core ddm functions can make use of conflict
+2) modify the method ssm_cost_add_stim_dependencies so that the core SSM functions can make use of conflict
     (e.g. one line: p_mat.c = obj.data.stim_conflict;)
 	
-3) overload ddm_def_instance with the introduced bias parameter. Set its prior, default and bounds.
+3) overload ssm_def_instance with the introduced bias parameter. Set its prior, default and bounds.
 
-4) write the core ddm_pdf function (the current implemented version uses a transition matrix approach)
+4) write the core ssm_pdf function (the current implemented version uses a transition matrix approach)
 
-The structure is like this: the modelclass defines the space of all parameters you want to include in this specific version of the DDM.  
+The structure is like this: the modelclass defines the space of all parameters you want to include in this specific version of the SSM.
 Then there is an id_model and id_search.  
 id_model sets the specific subset of parameters that you want to be non-default (I hope not non-zero).
 id_search sets the which of these parameters are then optimised (for example, you want noise in the model, but you don't want it to be a free parameter).  
@@ -70,24 +70,27 @@ id_model and id_search are fundamentally binary strings that represent the inclu
 Installation
 ============
 1) Download.  
-2) Add the folder containing ddm_def.m to path, and subfolders:   addpath(genpath(fullfile('pathtofolder','malleable-ddm'));  
+2) Add the folder containing ssm_def.m to path, and subfolders:   addpath(genpath(fullfile('pathtofolder','malleable-SSM'));
 3) Move the contents of the testing folder to somewhere where you will be working, and delete the empty testing folder.  
 
 How to cite
 ===========
-TBD
+McIntosh, J. R., & Sajda, P. (2019). Decomposing Simon task BOLD activation using a drift-diffusion model framework. bioRxiv, DOI:809947_.
+
+.. _DOI:809947: https://doi.org/10.1101/809947
+
 
 Getting started
 ===============
 The following functions in the testing folder can be run directly, and should clarify usage:  
 test_compare_likelihoods.m - Plots the likelihood of data after model fitting with the analytical method, and compared it to likelhood of other methods. Deviation is due to discretization of decision variable and time for transition matrix method, and time for brute force method.  
 test_compare_pdf.m - Similar to above, but shows the PDF.  
-test_ddm_run.m - fit the basic DDM with the various methods.  
-test_ddm_run_conflict.m - fit a conflict DDM by initializing with the analytical methods, and then running the transition matrix approach to capture conflict.  
+test_ssm_run.m - fit the basic SSM with the various methods.
+test_ssm_run_conflict.m - fit a conflict SSM by initializing with the analytical methods, and then running the transition matrix approach to capture conflict.
 
-To generate your own model with new parameters test_ddm_run_conflict.m is a good start - shows how to include trial conditions (presence of conflict in this case, but could be stimulus strength etc.).   Includes the formulation for the transition matrix method, and shows how to add non-standard DDM parameters.
+To generate your own model with new parameters test_ssm_run_conflict.m is a good start - shows how to include trial conditions (presence of conflict in this case, but could be stimulus strength etc.).   Includes the formulation for the transition matrix method, and shows how to add non-standard SSM parameters.
 
 Todo
 ====
-- MCMC could be implemented analytically  
-- Transition matrix approach (like brute force approach, most commonly used for DDM extensions where there is no analytical solution), suffers if the discretisation is too relaxed. In particular, the peak of the RT distribution is not fully captured if the timestep (dt) is too low. This could be improved substantially, by having dt increment more finely near the peak of the distribution.  
+- MCMC could be implemented   
+- Transition matrix approach (like brute force approach, most commonly used for SSM extensions where there is no analytical solution), suffers if the discretisation is too relaxed. In particular, the peak of the RT distribution is not fully captured if the timestep (dt) is too low. This could be improved substantially, by having dt increment more finely near the peak of the distribution.
