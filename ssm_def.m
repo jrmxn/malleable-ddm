@@ -31,7 +31,7 @@ classdef ssm_def < matlab.mixin.Copyable
         function obj = ssm_def
             %light initialisation so functions can be used easily
             obj.modelclass = '';%used to set file names
-            obj.info.version = sprintf('0.0.7');
+            obj.info.version = sprintf('0.0.8');
             obj.info.date = datetime;
             obj.info.description = '';
             try
@@ -1186,6 +1186,7 @@ classdef ssm_def < matlab.mixin.Copyable
     methods (Static)
         
         function  [pdf_,p_cr] = ssm_prt_ana(p,rt)
+            assert(p.s == 1, 'Analytical methods only accept s = 1 currently');
             err = 1e-8;
             % use functions from HDDM
             p_cr = hddm_prob_ub(p.v,p.a,p.z);
@@ -1200,6 +1201,7 @@ classdef ssm_def < matlab.mixin.Copyable
                     'in future. Also this check probably takes time since '...
                     'rt is often large.']);
             end
+            assert(p.s == 1, 'Analytical methods only accept s = 1 currently');
             correct_side = 1;%assume upper bound is correct
             err = 1e-8;
             
