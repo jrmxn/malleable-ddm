@@ -500,13 +500,13 @@ classdef ssm_def < matlab.mixin.Copyable
                 ssm_def.debi_model(obj.id_search,'de','st'),...
                 obj.modelclass,...
                 obj.extra_string);
-            if not(exist(f_path,'dir')==7),mkdir(f_path);end
             f_savepath = fullfile(f_path,f_name);
         end
         function f_savepath = ssm_save(obj, f_path)
             if not(exist('f_path','var')==1),f_path = '';end
             f_savepath = ssm_get_save_path(obj, f_path);
-            
+            if not(exist(fileparts(f_savepath),'dir')==7),mkdir(fileparts(f_savepath));end
+
             save(f_savepath,'obj');
         end
         
@@ -523,6 +523,8 @@ classdef ssm_def < matlab.mixin.Copyable
                 obj.objp.(prop_names{ix_prop_names}) = obj.(prop_names{ix_prop_names});
             end
             obj_ = obj.objp;
+            
+            if not(exist(fileparts(f_savepath),'dir')==7),mkdir(fileparts(f_savepath));end
             save(f_savepath,'obj_');
         end
         
