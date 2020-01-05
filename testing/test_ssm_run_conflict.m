@@ -3,6 +3,10 @@ function test_ssm_run_conflict(model_type,varargin)
 % example use:
 % test_ssm_run_conflict('SE-ssm')
 %%
+if nargin < 1
+    model_type = 'SE-ssm';
+end
+%%
 d.vec_sub = 1:3;
 v = inputParser;
 addOptional(v,'vec_sub',d.vec_sub);
