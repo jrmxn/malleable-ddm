@@ -9,6 +9,12 @@ addpath(fullfile('..','ext_mod'));
 % With sufficient iterations, brute force approach and transition matrix
 % approach are virtually identical - although they deviate slightly from
 % analytical solution unless time resolution (dt) is sufficiently low.
+
+% N.B. this script uses ssm_def.m and is consequently for comparing the
+% operation of analytical methods, vs transition matrix based appraoches
+% vs, traditional brute force methods - in general. It does not compare the
+% SE-SSM to other methods (since the analytical approach does not exist for
+% that case).
 %%
 sr = load('testing_fit.mat');sr = sr.obj;%just load this as a template
 p = sr.fit(end).p;
